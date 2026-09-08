@@ -93,7 +93,12 @@ export default function AdminPage() {
               </div>
               <p className="text-[13px] text-[#217A78] font-medium mb-1">{app.expertType}</p>
               <p className="text-[13px] text-[#5B584F] mb-1">{app.credentialInfo}</p>
-              {app.filePath && <p className="text-[12px] text-[#9A968A] mb-3">Attached: {app.filePath}</p>}
+              {app.filePath && (
+                <a href={`/api/admin/expert-applications/${app.id}/file`} target="_blank" rel="noopener noreferrer"
+                  className="text-[12px] text-[#26364A] underline mb-3 inline-block">
+                  View attachment
+                </a>
+              )}
               <div className="flex gap-2 mt-3">
                 <button disabled={workingId === app.id} onClick={() => review(app.id, "approve")}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-semibold bg-[#217A78] text-white disabled:opacity-40 hover:bg-[#1a615f] transition-colors">

@@ -240,3 +240,37 @@ create policy admin_read_all_applications on expert_applications for select usin
 create policy admin_update_applications on expert_applications for update using (
   exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
 );
+
+-- ---------------------------------------------------------------------
+-- Storage — real credential file uploads for expert_applications.file_path
+-- (handoff §10 item 5). Private bucket; applicants upload straight from the
+-- browser (anon key + their own session), no service-role route needed.
+-- Object paths are namespaced "{auth.uid()}/...", which is what the
+-- policies below key off via storage.foldername(name)[1] — the API route
+-- that inserts the application row also checks this prefix server-side so
+-- a forged file_path can't point at someone else's object.
+-- ---------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('expert-credentials', 'expert-credentials', false)
+on conflict (id) do nothing;
+
+create policy "applicants upload their own credential files"
+on storage.objects for insert
+with check (
+  bucket_id = 'expert-credentials'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+create policy "applicants read their own credential files"
+on storage.objects for select
+using (
+  bucket_id = 'expert-credentials'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+create policy "admins read all credential files"
+on storage.objects for select
+using (
+  bucket_id = 'expert-credentials'
+  and exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+);

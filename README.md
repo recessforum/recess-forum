@@ -95,6 +95,44 @@ post → add comment → toggle a vote (1 → 0 → 1, confirming `cast_vote`'s
 undo logic and that `auth.uid()` resolves correctly from a real session) →
 karma/badge display. Test accounts and their data were deleted afterward.
 
+## Admin review flow (done)
+
+`/admin` (gated to `profiles.role = 'admin'`) lists pending Verified Expert
+applications with Approve/Reject buttons. The API routes under
+`app/api/admin/expert-applications/` check `isAdmin()` and then update
+`expert_applications.status`/`reviewed_by`/`reviewed_at`, promoting
+`profiles.role`/`profiles.expert_type` on approval. Authorization is RLS-based
+(`auth.uid()` must own a `profiles` row with `role = 'admin'`) rather than a
+service-role route — there's no service role key in this environment, and
+Postgres ORs multiple policies for the same command together, so the
+admin-only policies compose cleanly with the existing per-user ones.
+
+**Real bug caught during cleanup** — `expert_applications.reviewed_by` had no
+`ON DELETE` clause (default RESTRICT), so deleting an admin account was
+silently blocked by every application they'd ever reviewed. Fixed to
+`ON DELETE SET NULL` on the live DB and in `schema.sql`.
+
+## File uploads (done)
+
+Credential files (license, certification, ID) attached to a Verified Expert
+application now go to a real private Supabase Storage bucket
+(`expert-credentials`), not just a captured filename. The browser uploads
+directly to `{auth.uid()}/{timestamp}.{ext}` using the user's own session —
+storage RLS only allows writing under your own uid folder, and the API route
+that records the application double-checks the path prefix server-side
+before insert. Client-side validation caps files at PDF/JPG/PNG, 10MB.
+
+Admins view an attachment via `/api/admin/expert-applications/[id]/file`,
+which checks `isAdmin()` and redirects to a short-lived signed URL
+(`createSignedUrl`, 5 min) — the file itself is never public. A third storage
+policy lets any user with `profiles.role = 'admin'` `select` any object in
+the bucket, so `createSignedUrl` succeeds for admins reviewing someone else's
+file.
+
+Verified end-to-end: uploaded a real PDF as a test applicant, confirmed the
+object landed at the expected `{uid}/...` path, opened it as admin via the
+signed-URL route, and approved the application.
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final
@@ -108,8 +146,9 @@ were ported faithfully.
 | Data storage — expert applications | `window.storage` | **Real Supabase table** (`expert_applications`, RLS: `auth.uid() = applicant_id`) | Admin approval UI (see below) |
 | Votes / views dedup | Per-browser-session React state, lost on reload | **Real Postgres tables**, atomic via `cast_vote`/`increment_post_view` (anonymous visitors share one bucket for views; voting requires login) | — already real |
 | Routing | Single-page state (`openPostId`) | Real routes: `/`, `/post/[id]`, `/login`, `/signup` | — already real |
-| Verified Expert / Admin roles | Hardcoded `AUTHOR_ROLES` object keyed by typed name — anyone could self-grant | **Real `profiles.role`/`profiles.expert_type` columns**, joined directly onto each post/comment | Promotion is still a manual SQL `update profiles set role = ...` — no admin UI yet (item below) |
-| Credential file upload | Filename only, no real storage | Same — filename only | Real object storage (S3/R2) + the `file_path` column (already on `expert_applications`) |
+| Verified Expert / Admin roles | Hardcoded `AUTHOR_ROLES` object keyed by typed name — anyone could self-grant | **Real `profiles.role`/`profiles.expert_type` columns**, joined directly onto each post/comment, promoted via the admin review flow | Admin accounts are still granted by a manual SQL `update profiles set role = 'admin' ...` — no UI for that (not in the handoff's scope either) |
+| Expert application review | Write-only queue, no review UI | **Real admin review page** (`/admin`), RLS-gated approve/reject | — already real |
+| Credential file upload | Filename only, no real storage | **Real private Supabase Storage bucket**, RLS-scoped per uploader, admin access via signed URL | — already real |
 | Zip → state | Approximate 3-digit-prefix table | Same table, ported as-is (`lib/location.ts`) | A real zip database or geocoding API, if this becomes a problem in practice |
 
 ## Next steps, in priority order
@@ -118,12 +157,9 @@ were ported faithfully.
    project (see above).
 2. ~~Database migration~~ — **done**. Posts/comments/votes/views are on
    real Supabase tables (see above).
-3. **Admin review flow** for expert applications — a page (gated to
-   `profiles.role = 'admin'`) listing `expert_applications` where
-   `status = 'pending'`, with approve/reject buttons that update `status`,
-   `reviewed_by`, `reviewed_at`, and (on approve) `profiles.role` /
-   `profiles.expert_type` for the applicant.
-4. Real file upload for credentials (S3/R2 or Supabase Storage), writing to
-   `expert_applications.file_path`.
+3. ~~Admin review flow~~ — **done**. `/admin` lists pending expert
+   applications with approve/reject (see above).
+4. ~~Real file upload for credentials~~ — **done**. Real Supabase Storage
+   bucket, RLS-scoped, admin access via signed URL (see above).
 5. Everything else (moderation tools, reporting, notifications) — not
    designed yet, per the handoff.

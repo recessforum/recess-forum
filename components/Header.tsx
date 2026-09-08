@@ -28,7 +28,7 @@ export function Header() {
     if (data.post) router.push(`/post/${data.post.id}`);
   };
 
-  const handleExpertApplication = async (input: { expertType: string; credentialInfo: string; fileName: string }) => {
+  const handleExpertApplication = async (input: { expertType: string; credentialInfo: string; filePath: string | null }) => {
     await fetch("/api/expert-applications", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

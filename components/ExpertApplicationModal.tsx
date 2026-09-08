@@ -4,22 +4,74 @@ import { useState } from "react";
 import { CheckCircle2, Loader2, Upload, X } from "lucide-react";
 import { EXPERT_TYPES } from "@/lib/roles";
 import { useAuth } from "@/lib/auth-context";
+import { createClient } from "@/lib/supabase/client";
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
+const ALLOWED_TYPES: Record<string, true> = {
+  "application/pdf": true,
+  "image/jpeg": true,
+  "image/png": true,
+};
 
 export function ExpertApplicationModal({
   onClose,
   onSubmit,
 }: {
   onClose: () => void;
-  onSubmit: (input: { expertType: string; credentialInfo: string; fileName: string }) => Promise<void>;
+  onSubmit: (input: { expertType: string; credentialInfo: string; filePath: string | null }) => Promise<void>;
 }) {
   const { profile } = useAuth();
   const [expertType, setExpertType] = useState(EXPERT_TYPES[0]);
   const [credentialInfo, setCredentialInfo] = useState("");
-  const [fileName, setFileName] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const inputClass = "w-full px-3 py-2.5 border border-[#E6D9C4] bg-white text-[14px] outline-none focus:border-[#26364A] transition-colors";
   const canSubmit = credentialInfo.trim() && !saving;
+
+  const handleFileChange = (f: File | undefined) => {
+    if (!f) {
+      setFile(null);
+      setFileError(null);
+      return;
+    }
+    if (!ALLOWED_TYPES[f.type]) {
+      setFile(null);
+      setFileError("Only PDF, JPG, or PNG files are accepted.");
+      return;
+    }
+    if (f.size > MAX_FILE_BYTES) {
+      setFile(null);
+      setFileError("File is too large (10MB max).");
+      return;
+    }
+    setFile(f);
+    setFileError(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!profile) return;
+    setSaving(true);
+
+    let filePath: string | null = null;
+    if (file) {
+      const supabase = createClient();
+      const ext = file.name.split(".").pop();
+      const safeExt = ext && /^[a-zA-Z0-9]+$/.test(ext) ? `.${ext}` : "";
+      filePath = `${profile.id}/${Date.now()}${safeExt}`;
+      const { error } = await supabase.storage.from("expert-credentials").upload(filePath, file);
+      if (error) {
+        setFileError(error.message);
+        setSaving(false);
+        return;
+      }
+    }
+
+    await onSubmit({ expertType, credentialInfo: credentialInfo.trim(), filePath });
+    setSaving(false);
+    setDone(true);
+  };
 
   if (done) {
     return (
@@ -64,20 +116,16 @@ export function ExpertApplicationModal({
             </label>
             <label className="flex items-center gap-2 px-3 py-2.5 text-[13px] text-[#5B584F] cursor-pointer" style={{ border: "1px dashed #E3B37C", backgroundColor: "#FBF9F5" }}>
               <Upload size={15} />
-              {fileName || "Choose a file"}
-              <input type="file" className="hidden" onChange={(e) => setFileName(e.target.files?.[0]?.name || "")} />
+              {file?.name || "Choose a file"}
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => handleFileChange(e.target.files?.[0])} />
             </label>
+            {fileError && <p className="text-[12px] text-[#B23B3B] mt-1.5">{fileError}</p>}
+            <p className="text-[11px] text-[#9A968A] mt-1.5">PDF, JPG, or PNG — 10MB max.</p>
           </div>
         </div>
         <div className="px-6 py-4 flex justify-end gap-2" style={{ borderTop: "1px solid #F0C99B" }}>
           <button onClick={onClose} className="px-4 py-2 text-[14px] font-medium text-[#5B584F] hover:text-[#1C1B19]">Cancel</button>
-          <button disabled={!canSubmit}
-            onClick={async () => {
-              setSaving(true);
-              await onSubmit({ expertType, credentialInfo: credentialInfo.trim(), fileName });
-              setSaving(false);
-              setDone(true);
-            }}
+          <button disabled={!canSubmit} onClick={handleSubmit}
             className="px-4 py-2 text-[14px] font-semibold bg-[#26364A] text-white disabled:opacity-40 flex items-center gap-2 hover:bg-[#1e2c3d] transition-colors">
             {saving && <Loader2 size={14} className="animate-spin" />}
             Submit application

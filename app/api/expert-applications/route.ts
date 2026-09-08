@@ -6,9 +6,15 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "log in to apply" }, { status: 401 });
 
-  const data = (await req.json()) as { expertType: string; credentialInfo: string; fileName: string };
+  const data = (await req.json()) as { expertType: string; credentialInfo: string; filePath: string | null };
   if (!data.credentialInfo?.trim()) {
     return NextResponse.json({ error: "credentialInfo is required" }, { status: 400 });
+  }
+  // The client already uploaded straight to the expert-credentials bucket
+  // (storage RLS only lets a user write under their own uid folder), so this
+  // just guards against a forged path pointing at someone else's file.
+  if (data.filePath && !data.filePath.startsWith(`${user.id}/`)) {
+    return NextResponse.json({ error: "invalid file path" }, { status: 400 });
   }
 
   // Real per-user table now (schema.sql's expert_applications), not the
@@ -19,7 +25,7 @@ export async function POST(req: NextRequest) {
       applicant_id: user.id,
       expert_type: data.expertType,
       credential_info: data.credentialInfo.trim(),
-      file_path: data.fileName || null,
+      file_path: data.filePath || null,
     })
     .select()
     .single();
