@@ -28,6 +28,28 @@ Opens on `http://localhost:3000` (or whatever port you pass with `-p`). Needs
 a local `.env.local` with the real Supabase project URL and publishable key
 (not committed to git — ask for the values if you don't have them).
 
+## Deployment (done)
+
+Live at **https://recess-forum.vercel.app**, deployed on Vercel from this repo's
+`main` branch (auto-deploys on push). Vercel project is under the personal
+`mentodari` account, not a separate team — Vercel's Hobby plan can't deploy
+from a *private* GitHub org repo, so `recessforum/recess-forum` was made
+public on GitHub rather than paying for Pro. The same
+`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` values from
+`.env.local` are set as Vercel environment variables (Production and
+Preview) — both are the publishable anon key, safe to expose client-side.
+
+Verified against the live URL, not just the build log: homepage renders and
+loads the real (currently empty) Supabase-backed feed, and a bogus login
+attempt correctly round-trips to Supabase auth and returns "Invalid login
+credentials" — confirming prod is talking to the real project, not a stale
+build.
+
+**Known gap**: Supabase's default email sender has strict rate limits (a
+handful of emails/hour) that will start bouncing signup-confirmation emails
+under any real signup volume. Worth swapping in a custom SMTP provider
+(Supabase dashboard → Authentication → Emails) before any real launch push.
+
 ## Auth (done)
 
 Real Supabase Auth is live: email/password signup with email confirmation,
