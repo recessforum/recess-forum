@@ -22,6 +22,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid dir" }, { status: 400 });
   }
 
-  const result = await vote(data.targetType, data.targetId, data.postId, data.dir, user.id);
+  const result = await vote(supabase, data.targetType, data.targetId, data.postId, data.dir);
   return NextResponse.json(result);
 }

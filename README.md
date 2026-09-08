@@ -11,7 +11,7 @@ grade level, and subject.
   handoff doc it shipped with, and the two brand SVGs. Kept for reference;
   not part of the running app.
 - Everything else at the repo root is the real Next.js app (App Router,
-  TypeScript, Tailwind v4, Supabase Auth). This is what you run.
+  TypeScript, Tailwind v4, Supabase Auth + Postgres). This is what you run.
 - [`schema.sql`](schema.sql) — the Postgres schema, applied to the live
   Supabase project (org "Recessforum", project `recess-forum`, account
   `recessforum@gmail.com` — a separate account/business from mentodari and
@@ -55,6 +55,46 @@ and schema-qualifying the inserts as `public.profiles`. `schema.sql` already
 reflects the fix — if this function is ever recreated by hand, don't drop
 that clause.
 
+## Database (done)
+
+Posts, comments, votes, and view counts are on the real Supabase
+`posts`/`comments`/`votes`/`post_views` tables — `lib/db.ts` no longer
+touches the file-based dev store. Author info (`display_name`, `role`,
+`expert_type`) is joined from `profiles` at read time and flattened onto
+each `Post`/`Comment` (`author`, `authorId`, `authorRole`,
+`authorExpertType`), so `lib/roles.ts` no longer needs the name-keyed
+`rolesByAuthor` lookup the first auth-only pass used — `roleFor` is now a
+pure mapping and `karmaFor`/`tierFor` key off `authorId`.
+
+Voting and view-increment go through two Postgres functions
+(`cast_vote`, `increment_post_view` in `schema.sql`) rather than plain
+client-side inserts, so the score/view-count updates are atomic. **Both
+derive the acting user from `auth.uid()` inside the function — never from a
+caller-supplied parameter.** An earlier version took `p_voter_id`/
+`p_viewer_id` as arguments; since these are `security definer` functions
+reachable directly at `/rest/v1/rpc/<name>` under the public anon key, that
+would have let anyone vote or record a view as anyone else just by passing
+a different id. Caught and fixed before anything used it — don't
+reintroduce caller-supplied identity into either function.
+
+**Ambiguous embed gotcha, already fixed** — a bare `profiles(...)` embed on
+`posts`/`comments` selects failed with PGRST201 ("more than one relationship
+was found"), because each table has a second, indirect path to `profiles`
+through `post_views`/`votes`. Fixed by naming the FK explicitly:
+`profiles!posts_author_id_fkey(...)` / `profiles!comments_author_id_fkey(...)`
+(see `POST_SELECT`/`COMMENT_SELECT` in `lib/db.ts`).
+
+Demo/seed content did **not** carry over — the old seed posts (MiraP,
+DKimFamily, etc.) had no matching Supabase accounts, and fabricating
+`auth.users` rows for them wasn't worth the hack. The live database starts
+empty; real signups create real content from here.
+
+Verified end-to-end against the live Supabase project (not just typecheck/
+build): signup → profile creation with chosen nickname → login → create
+post → add comment → toggle a vote (1 → 0 → 1, confirming `cast_vote`'s
+undo logic and that `auth.uid()` resolves correctly from a real session) →
+karma/badge display. Test accounts and their data were deleted afterward.
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final
@@ -64,11 +104,11 @@ were ported faithfully.
 | Thing | Prototype (artifact) | This app | Real product needs |
 |---|---|---|---|
 | Auth | None — "Your name" is free text | **Real Supabase Auth** — email/password + confirmation, nickname, logout. Google button present but disabled (see above). | Finish Google OAuth (needs a Google Cloud project) |
-| Data storage — posts/comments/votes/views | `window.storage` (artifact-only) | JSON file at `.data/db.json`, via `lib/db.ts` and real API routes | Migrate to `schema.sql`'s `posts`/`comments`/`votes`/`post_views` tables |
+| Data storage — posts/comments/votes/views | `window.storage` (artifact-only) | **Real Supabase tables**, via `lib/db.ts` and real API routes | — already real |
 | Data storage — expert applications | `window.storage` | **Real Supabase table** (`expert_applications`, RLS: `auth.uid() = applicant_id`) | Admin approval UI (see below) |
-| Votes / views dedup | Per-browser-session React state, lost on reload | Persisted server-side, deduped by the **real authenticated `userId`** (anonymous visitors share one bucket for views; voting requires login) | Just needs the storage migration above — dedup logic is already real |
+| Votes / views dedup | Per-browser-session React state, lost on reload | **Real Postgres tables**, atomic via `cast_vote`/`increment_post_view` (anonymous visitors share one bucket for views; voting requires login) | — already real |
 | Routing | Single-page state (`openPostId`) | Real routes: `/`, `/post/[id]`, `/login`, `/signup` | — already real |
-| Verified Expert / Admin roles | Hardcoded `AUTHOR_ROLES` object keyed by typed name — anyone could self-grant | **Real `profiles.role`/`profiles.expert_type` columns**, looked up by author name (`lib/roles.ts`'s `roleFor`) since posts/comments are still name-keyed in the file store | Promotion is still a manual SQL `update profiles set role = ...` — no admin UI yet (item 3 below) |
+| Verified Expert / Admin roles | Hardcoded `AUTHOR_ROLES` object keyed by typed name — anyone could self-grant | **Real `profiles.role`/`profiles.expert_type` columns**, joined directly onto each post/comment | Promotion is still a manual SQL `update profiles set role = ...` — no admin UI yet (item below) |
 | Credential file upload | Filename only, no real storage | Same — filename only | Real object storage (S3/R2) + the `file_path` column (already on `expert_applications`) |
 | Zip → state | Approximate 3-digit-prefix table | Same table, ported as-is (`lib/location.ts`) | A real zip database or geocoding API, if this becomes a problem in practice |
 
@@ -76,14 +116,8 @@ were ported faithfully.
 
 1. ~~Auth~~ — **done**. Google OAuth specifically still needs a Google Cloud
    project (see above).
-2. **Migrate `lib/db.ts` off the JSON file** onto `schema.sql`'s
-   `posts`/`comments`/`votes`/`post_views` tables. The function signatures in
-   that file (`createPost`, `addComment`, `vote`, `registerView`,
-   `getVoteDirs`) were written to make this swap mechanical — same shapes,
-   different bodies, calling Supabase instead of reading/writing JSON.
-   Once posts/comments carry a real `author_id`, `lib/roles.ts`'s
-   name-keyed `rolesByAuthor` lookup can also go away in favor of a direct
-   join.
+2. ~~Database migration~~ — **done**. Posts/comments/votes/views are on
+   real Supabase tables (see above).
 3. **Admin review flow** for expert applications — a page (gated to
    `profiles.role = 'admin'`) listing `expert_applications` where
    `status = 'pending'`, with approve/reject buttons that update `status`,

@@ -26,7 +26,7 @@ export function CommentNode({
   voteDirs: Record<string, number>;
   onVote: (id: string, dir: 1 | -1) => void;
   onReply: (postId: string, parentId: string | null, input: { body: string }) => Promise<void>;
-  badgesFor: (author: string) => { tier: TierWithIcon; role: Role | null };
+  badgesFor: (comment: Comment) => { tier: TierWithIcon; role: Role | null };
 }) {
   const router = useRouter();
   const { profile } = useAuth();
@@ -56,7 +56,7 @@ export function CommentNode({
       <div className="mb-2">
         <div className="flex items-center gap-2 text-[13px] mb-0.5">
           <span className="font-semibold text-[#1C1B19]">{comment.author}</span>
-          <AuthorBadges {...badgesFor(comment.author)} />
+          <AuthorBadges {...badgesFor(comment)} />
           <span className="text-[12px] text-[#9A968A]">{timeAgo(comment.createdAt)}</span>
         </div>
         <p className="text-[14px] text-[#3A382F] leading-relaxed mb-1.5">{comment.body}</p>

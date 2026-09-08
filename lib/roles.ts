@@ -1,9 +1,9 @@
-import type { Comment, Post, Role, Tier } from "./types";
+import type { Comment, Post, ProfileRole, Role, Tier } from "./types";
 
-export function karmaFor(author: string, posts: Post[], comments: Record<string, Comment[]>): number {
+export function karmaFor(authorId: string, posts: Post[], comments: Record<string, Comment[]>): number {
   let total = 0;
-  posts.forEach((p) => { if (p.author === author) total += p.score; });
-  Object.values(comments).flat().forEach((c) => { if (c.author === author) total += c.score; });
+  posts.forEach((p) => { if (p.authorId === authorId) total += p.score; });
+  Object.values(comments).flat().forEach((c) => { if (c.authorId === authorId) total += c.score; });
   return total;
 }
 
@@ -18,26 +18,28 @@ export const TIERS: (Tier & { icon: "crown" | "star" | "sprout" | "rocket"; text
   { id: "rising", label: "Rising", posts: 2, comments: 10, icon: "rocket", text: "#3B5BA5", bg: "#E9EEF7" },
 ];
 
-export function countsFor(author: string, posts: Post[], comments: Record<string, Comment[]>) {
-  const postCount = posts.filter((p) => p.author === author).length;
-  const commentCount = Object.values(comments).flat().filter((c) => c.author === author).length;
+export function countsFor(authorId: string, posts: Post[], comments: Record<string, Comment[]>) {
+  const postCount = posts.filter((p) => p.authorId === authorId).length;
+  const commentCount = Object.values(comments).flat().filter((c) => c.authorId === authorId).length;
   return { postCount, commentCount };
 }
 
-export function tierFor(author: string, posts: Post[], comments: Record<string, Comment[]>) {
-  const { postCount, commentCount } = countsFor(author, posts, comments);
+export function tierFor(authorId: string, posts: Post[], comments: Record<string, Comment[]>) {
+  const { postCount, commentCount } = countsFor(authorId, posts, comments);
   return TIERS.find((t) => postCount >= t.posts && commentCount >= t.comments) || null;
 }
 
 /* Credential badges — separate from activity tier, granted by the site
    (Administrator) or via a separate verification application (Verified
-   Expert). Unlike the prototype's AUTHOR_ROLES (a hardcoded object anyone
-   could grant themselves by typing a name), this now reads the real
-   `profiles.role`/`expert_type` columns from Supabase — see handoff §10
-   item 4. `rolesByAuthor` is keyed by display_name (unique in `profiles`)
-   because posts/comments are still stored by author name, not userId, in
-   the file-backed dev store (handoff §10 item 2). */
-export type RolesByAuthor = Record<string, { role: "verified_expert" | "admin"; expertType: string | null }>;
+   Expert). Read straight from the real `profiles.role`/`expert_type`
+   columns joined onto each post/comment at fetch time (see handoff §10
+   item 4) — promotion is still a manual `update profiles set role = ...`
+   until the admin review UI exists. */
+export function roleFor(role: ProfileRole, expertType: string | null): Role | null {
+  if (role === "admin") return { role: "admin" };
+  if (role === "verified_expert") return { role: "verified_expert", expertType: expertType || "" };
+  return null;
+}
 
 export const EXPERT_TYPES = [
   "Certified Teacher", "School Counselor / College Admissions Counselor", "School Psychologist",
@@ -50,10 +52,3 @@ export const EXPERT_TYPES = [
   "Developmental Pediatrician", "Financial Aid Advisor", "Homeschool Curriculum Specialist",
   "Gifted Education Specialist",
 ];
-
-export function roleFor(author: string, rolesByAuthor: RolesByAuthor): Role | null {
-  const entry = rolesByAuthor[author];
-  if (!entry) return null;
-  if (entry.role === "admin") return { role: "admin" };
-  return { role: "verified_expert", expertType: entry.expertType || "" };
-}

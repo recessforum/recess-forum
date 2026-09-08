@@ -114,6 +114,85 @@ create trigger on_auth_user_created
   for each row execute function handle_new_user();
 
 -- ---------------------------------------------------------------------
+-- Vote/view mutations, as Postgres functions rather than plain client-side
+-- inserts. Both are `security definer` so they can update posts.score/views
+-- (which RLS otherwise locks down — see policies below), which means they
+-- run with elevated privilege and are reachable directly at
+-- /rest/v1/rpc/<name> under the public anon key. Each MUST derive the
+-- acting user from auth.uid() internally, never from a caller-supplied
+-- parameter — an earlier version took p_voter_id/p_viewer_id as arguments,
+-- which would have let anyone vote or record a view as anyone else just by
+-- passing a different id. Caught before shipping; don't reintroduce it.
+-- ---------------------------------------------------------------------
+create function cast_vote(p_target_type text, p_target_id uuid, p_dir smallint, p_post_id uuid default null)
+returns table(score integer, dir smallint)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_voter_id uuid := auth.uid();
+  v_prev_dir smallint;
+  v_new_dir smallint;
+  v_delta integer;
+  v_new_score integer;
+begin
+  if v_voter_id is null then
+    raise exception 'not authenticated';
+  end if;
+
+  select v.dir into v_prev_dir from public.votes v
+    where v.voter_id = v_voter_id and v.target_type = p_target_type and v.target_id = p_target_id;
+  v_prev_dir := coalesce(v_prev_dir, 0);
+  v_new_dir := case when v_prev_dir = p_dir then 0 else p_dir end;
+  v_delta := v_new_dir - v_prev_dir;
+
+  if v_new_dir = 0 then
+    delete from public.votes where voter_id = v_voter_id and target_type = p_target_type and target_id = p_target_id;
+  else
+    insert into public.votes (voter_id, target_type, target_id, dir) values (v_voter_id, p_target_type, p_target_id, v_new_dir)
+    on conflict (voter_id, target_type, target_id) do update set dir = excluded.dir;
+  end if;
+
+  if p_target_type = 'post' then
+    update public.posts set score = score + v_delta where id = p_target_id returning posts.score into v_new_score;
+  else
+    update public.comments set score = score + v_delta where id = p_target_id returning comments.score into v_new_score;
+  end if;
+
+  return query select v_new_score, v_new_dir;
+end;
+$$;
+
+-- No-ops (returns the current count) for a logged-out caller — dedup is
+-- only meaningful once there's a real auth.uid() to key it on.
+create function increment_post_view(p_post_id uuid)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_viewer_id uuid := auth.uid();
+  v_new_views integer;
+begin
+  if v_viewer_id is null then
+    select views into v_new_views from public.posts where id = p_post_id;
+    return v_new_views;
+  end if;
+
+  insert into public.post_views (post_id, viewer_id) values (p_post_id, v_viewer_id)
+  on conflict (post_id, viewer_id) do nothing;
+  if found then
+    update public.posts set views = views + 1 where id = p_post_id returning views into v_new_views;
+  else
+    select views into v_new_views from public.posts where id = p_post_id;
+  end if;
+  return v_new_views;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
 -- Row Level Security — starting point, not a finished policy set.
 -- Forum content is public read; writes require the acting user to be the
 -- author. Approving expert applications and promoting roles must go through

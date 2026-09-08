@@ -7,7 +7,7 @@ import { CATEGORIES, categoryOf, colorForCategory, topicById } from "@/lib/taxon
 import { topicLabel } from "@/lib/taxonomy";
 import { US_STATES } from "@/lib/location";
 import { hotScore, rangeCutoff } from "@/lib/ranking";
-import { roleFor, tierFor, type RolesByAuthor } from "@/lib/roles";
+import { roleFor, tierFor } from "@/lib/roles";
 import type { Comment, Post } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
 import { PostRow } from "@/components/PostRow";
@@ -21,7 +21,6 @@ export default function HomePage() {
   const { profile } = useAuth();
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
-  const [rolesByAuthor, setRolesByAuthor] = useState<RolesByAuthor>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +42,6 @@ export default function HomePage() {
         setPosts(data.posts);
         setComments(data.comments);
         setPostVoteDirs(data.voteDirs.posts);
-        setRolesByAuthor(data.rolesByAuthor);
       } catch {
         setError("Couldn't load the board. Try refreshing.");
       } finally {
@@ -67,8 +65,8 @@ export default function HomePage() {
   }, [postVoteDirs, profile, router]);
 
   const badgesFor = useCallback(
-    (author: string) => ({ tier: tierFor(author, posts || [], comments), role: roleFor(author, rolesByAuthor) }),
-    [posts, comments, rolesByAuthor]
+    (item: Post | Comment) => ({ tier: tierFor(item.authorId, posts || [], comments), role: roleFor(item.authorRole, item.authorExpertType) }),
+    [posts, comments]
   );
 
   const activeTopic = selectedTopic ? topicById(selectedTopic) : null;

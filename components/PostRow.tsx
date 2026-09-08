@@ -24,7 +24,7 @@ export function PostRow({
   onVote: (id: string, dir: 1 | -1) => void;
   dir: number;
   onTopic: (topicId: string) => void;
-  badgesFor: (author: string) => { tier: TierWithIcon; role: Role | null };
+  badgesFor: (post: Post) => { tier: TierWithIcon; role: Role | null };
 }) {
   const router = useRouter();
   return (
@@ -47,7 +47,7 @@ export function PostRow({
         )}
         <div className="flex items-center gap-2 text-[12px] text-[#9A968A]">
           <span>{post.author}</span>
-          <AuthorBadges {...badgesFor(post.author)} />
+          <AuthorBadges {...badgesFor(post)} />
           {post.state && (
             <span className="flex items-center gap-0.5">
               <MapPin size={11} /> {post.state}

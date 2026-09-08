@@ -3,11 +3,16 @@ export interface Promo {
   url: string | null;
 }
 
+export type ProfileRole = "member" | "verified_expert" | "admin";
+
 export interface Post {
   id: string;
   title: string;
   body: string;
-  author: string;
+  author: string; // profiles.display_name, joined at read time
+  authorId: string;
+  authorRole: ProfileRole;
+  authorExpertType: string | null;
   topicId: string;
   state: string | null;
   promo: Promo | null;
@@ -21,6 +26,9 @@ export interface Comment {
   postId: string;
   parentId: string | null;
   author: string;
+  authorId: string;
+  authorRole: ProfileRole;
+  authorExpertType: string | null;
   body: string;
   score: number;
   createdAt: number;
@@ -30,14 +38,14 @@ export type ExpertApplicationStatus = "pending" | "approved" | "rejected";
 
 export interface ExpertApplication {
   id: string;
-  author: string;
+  applicantId: string;
   expertType: string;
   credentialInfo: string;
-  fileName: string;
+  filePath: string | null;
   status: ExpertApplicationStatus;
   submittedAt: number;
-  reviewedBy?: string;
-  reviewedAt?: number;
+  reviewedBy: string | null;
+  reviewedAt: number | null;
 }
 
 export type Role =

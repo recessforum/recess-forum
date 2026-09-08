@@ -6,7 +6,7 @@ import { ChevronLeft, Eye, Loader2, MapPin } from "lucide-react";
 import { Briefcase } from "lucide-react";
 import type { Comment, Post } from "@/lib/types";
 import { timeAgo } from "@/lib/ranking";
-import { karmaFor, roleFor, tierFor, type RolesByAuthor } from "@/lib/roles";
+import { karmaFor, roleFor, tierFor } from "@/lib/roles";
 import { TopicBadge } from "@/components/TopicBadge";
 import { VoteControl } from "@/components/VoteControl";
 import { AuthorBadges } from "@/components/Badges";
@@ -24,7 +24,6 @@ export default function PostDetailPage() {
   const [commentVoteDirs, setCommentVoteDirs] = useState<Record<string, number>>({});
   const [allPosts, setAllPosts] = useState<Post[]>([]);
   const [allComments, setAllComments] = useState<Record<string, Comment[]>>({});
-  const [rolesByAuthor, setRolesByAuthor] = useState<RolesByAuthor>({});
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [commentSort, setCommentSort] = useState<"best" | "new">("best");
@@ -47,7 +46,6 @@ export default function PostDetailPage() {
       setCommentVoteDirs(data.voteDirs.comments);
       setAllPosts(bootstrap.posts);
       setAllComments(bootstrap.comments);
-      setRolesByAuthor(data.rolesByAuthor);
       setLoading(false);
       if (!viewedRef.current) {
         viewedRef.current = true;
@@ -59,10 +57,10 @@ export default function PostDetailPage() {
     })();
   }, [id]);
 
-  const karma = useCallback((author: string) => karmaFor(author, allPosts, allComments), [allPosts, allComments]);
+  const karma = useCallback((authorId: string) => karmaFor(authorId, allPosts, allComments), [allPosts, allComments]);
   const badgesFor = useCallback(
-    (author: string) => ({ tier: tierFor(author, allPosts, allComments), role: roleFor(author, rolesByAuthor) }),
-    [allPosts, allComments, rolesByAuthor]
+    (item: Post | Comment) => ({ tier: tierFor(item.authorId, allPosts, allComments), role: roleFor(item.authorRole, item.authorExpertType) }),
+    [allPosts, allComments]
   );
 
   const handleVotePost = async (postId: string, dir: 1 | -1) => {
@@ -146,8 +144,8 @@ export default function PostDetailPage() {
       <h1 className="text-[24px] font-semibold leading-tight text-[#1C1B19] mb-2">{post.title}</h1>
       <div className="text-[13px] text-[#9A968A] mb-4 flex items-center gap-1.5 flex-wrap">
         <span>{post.author}</span>
-        <AuthorBadges {...badgesFor(post.author)} />
-        <span className="text-[#26364A] font-medium">· {karma(post.author)} karma</span>
+        <AuthorBadges {...badgesFor(post)} />
+        <span className="text-[#26364A] font-medium">· {karma(post.authorId)} karma</span>
         {post.state && (
           <span className="flex items-center gap-0.5">· <MapPin size={12} className="ml-1" /> {post.state}</span>
         )}
