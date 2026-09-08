@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Comment, Post, Promo, ProfileRole } from "./types";
+import type { Comment, ExpertApplication, Post, Promo, ProfileRole } from "./types";
 
 /**
  * Real Supabase-backed persistence (handoff §10 item 2 — replaces the
@@ -216,4 +216,84 @@ export async function registerView(supabase: SupabaseClient, postId: string): Pr
   const { data, error } = await supabase.rpc("increment_post_view", { p_post_id: postId });
   if (error) throw error;
   return data as number;
+}
+
+/**
+ * Admin review flow (handoff §10 item 3). RLS backs this up independently
+ * (admin_read_all_applications / admin_update_applications / on profiles,
+ * see schema.sql) — this check just gives the API routes a clean 403
+ * instead of relying on RLS to silently return zero rows.
+ */
+export async function isAdmin(supabase: SupabaseClient, userId: string): Promise<boolean> {
+  const { data } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle();
+  return data?.role === "admin";
+}
+
+interface ExpertApplicationRow {
+  id: string;
+  applicant_id: string;
+  expert_type: string;
+  credential_info: string;
+  file_path: string | null;
+  status: ExpertApplication["status"];
+  submitted_at: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  profiles: { display_name: string } | { display_name: string }[] | null;
+}
+
+export async function getExpertApplications(
+  supabase: SupabaseClient
+): Promise<(ExpertApplication & { applicantName: string })[]> {
+  const { data, error } = await supabase
+    .from("expert_applications")
+    .select(
+      "id, applicant_id, expert_type, credential_info, file_path, status, submitted_at, reviewed_by, reviewed_at, profiles!expert_applications_applicant_id_fkey(display_name)"
+    )
+    .order("submitted_at", { ascending: true });
+  if (error) throw error;
+
+  return ((data as unknown as ExpertApplicationRow[]) || []).map((row) => {
+    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+    return {
+      id: row.id,
+      applicantId: row.applicant_id,
+      applicantName: profile?.display_name ?? "deleted",
+      expertType: row.expert_type,
+      credentialInfo: row.credential_info,
+      filePath: row.file_path,
+      status: row.status,
+      submittedAt: new Date(row.submitted_at).getTime(),
+      reviewedBy: row.reviewed_by,
+      reviewedAt: row.reviewed_at ? new Date(row.reviewed_at).getTime() : null,
+    };
+  });
+}
+
+export async function reviewExpertApplication(
+  supabase: SupabaseClient,
+  applicationId: string,
+  decision: "approved" | "rejected",
+  reviewerId: string
+): Promise<void> {
+  const { data: application, error: fetchError } = await supabase
+    .from("expert_applications")
+    .select("applicant_id, expert_type")
+    .eq("id", applicationId)
+    .single();
+  if (fetchError || !application) throw fetchError || new Error("application not found");
+
+  const { error: updateAppError } = await supabase
+    .from("expert_applications")
+    .update({ status: decision, reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })
+    .eq("id", applicationId);
+  if (updateAppError) throw updateAppError;
+
+  if (decision === "approved") {
+    const { error: updateProfileError } = await supabase
+      .from("profiles")
+      .update({ role: "verified_expert", expert_type: application.expert_type })
+      .eq("id", application.applicant_id);
+    if (updateProfileError) throw updateProfileError;
+  }
 }

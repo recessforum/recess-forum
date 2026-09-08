@@ -79,7 +79,11 @@ create table expert_applications (
   credential_info text not null,
   file_path text, -- storage object path once real file upload ships (handoff §10 item 5)
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
-  reviewed_by uuid references profiles(id),
+  -- on delete set null (not the default no-action/restrict) — otherwise
+  -- deleting an admin's account is permanently blocked by every application
+  -- they ever reviewed. Hit this for real deleting a test admin account;
+  -- fixed via ALTER on the live DB, reflected here so a fresh deploy matches.
+  reviewed_by uuid references profiles(id) on delete set null,
   reviewed_at timestamptz,
   submitted_at timestamptz not null default now()
 );
@@ -195,9 +199,14 @@ $$;
 -- ---------------------------------------------------------------------
 -- Row Level Security — starting point, not a finished policy set.
 -- Forum content is public read; writes require the acting user to be the
--- author. Approving expert applications and promoting roles must go through
--- a service-role admin action, not client-side RLS (handoff §10 item 3-4:
--- admin review is manual, so don't let users self-approve).
+-- author. Reviewing expert applications and promoting roles go through
+-- admin-only RLS policies below (auth.uid() must own a profiles row with
+-- role = 'admin') rather than a service-role route — there's no service
+-- role key on hand in this environment, and the exists-subquery pattern
+-- composes cleanly with the existing per-user policies (Postgres ORs
+-- policies for the same command together). Admin review is still manual:
+-- nothing here lets a user self-promote, since the check reads the row's
+-- *current* role, not anything the request itself supplies.
 -- ---------------------------------------------------------------------
 alter table profiles enable row level security;
 alter table posts enable row level security;
@@ -208,6 +217,9 @@ alter table expert_applications enable row level security;
 
 create policy "profiles are publicly readable" on profiles for select using (true);
 create policy "users update their own profile" on profiles for update using (auth.uid() = id);
+create policy admin_update_any_profile on profiles for update using (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+);
 
 create policy "posts are publicly readable" on posts for select using (true);
 create policy "authenticated users create posts as themselves" on posts for insert with check (auth.uid() = author_id);
@@ -222,5 +234,9 @@ create policy "users read their own view history" on post_views for select using
 
 create policy "users read their own applications" on expert_applications for select using (auth.uid() = applicant_id);
 create policy "authenticated users submit applications as themselves" on expert_applications for insert with check (auth.uid() = applicant_id);
--- Reviewing (status/reviewed_by/reviewed_at updates) is intentionally left
--- to a service-role admin route, not a client-facing RLS policy.
+create policy admin_read_all_applications on expert_applications for select using (
+  exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+);
+create policy admin_update_applications on expert_applications for update using (
+  exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+);
