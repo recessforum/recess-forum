@@ -17,6 +17,30 @@ grade level, and subject.
   `recessforum@gmail.com` — a separate account/business from mentodari and
   FrameHonest on purpose, so it gets its own free-tier project quota).
 
+## Circles (done)
+
+User-created groups within the forum — not part of the fixed topic taxonomy
+in `lib/taxonomy.ts`, which stays curated/finalized. Anyone logged in can
+create a circle (name, description, optional state) and is auto-joined as
+its first member. Circle membership gates *posting into* that circle
+(enforced in RLS on `posts`, not just the API route — see `schema.sql`), but
+circle posts are otherwise fully public: they show up in the main feed,
+search, and to logged-out visitors exactly like any other post, just with an
+extra circle badge. `/circles` lists and lets you join/leave circles;
+`/circles/[id]` is a circle's own page with its description, member count,
+join/leave, and its posts.
+
+Deliberately *not* built (yet): private/members-only circle posts. If that's
+wanted later it's a new visibility model on top of this, not a change to the
+existing public-post behavior — see the comment on the `circles` table in
+`schema.sql`.
+
+Verified end-to-end with two real test accounts: created a circle (creator
+auto-joined), posted into it, confirmed the post appears in the main feed
+and search with both topic and circle badges, confirmed a second
+non-member account sees "Join circle" (no post button) and — after
+joining — gets "Leave circle" + a working "New post" button.
+
 ## Running it
 
 ```bash

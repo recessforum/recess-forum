@@ -6,6 +6,7 @@ import type { Post, Role, Tier } from "@/lib/types";
 import { timeAgo } from "@/lib/ranking";
 import { VoteControl } from "./VoteControl";
 import { TopicBadge } from "./TopicBadge";
+import { CircleBadge } from "./CircleBadge";
 import { AuthorBadges } from "./Badges";
 import { Briefcase } from "lucide-react";
 
@@ -33,8 +34,9 @@ export function PostRow({
         <VoteControl score={post.score} dir={dir} onVote={(d) => onVote(post.id, d)} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="mb-1.5">
+        <div className="flex items-center gap-1.5 mb-1.5">
           <TopicBadge topicId={post.topicId} onClick={(e) => { e.stopPropagation(); onTopic(post.topicId); }} />
+          {post.circleId && post.circleName && <CircleBadge circleId={post.circleId} circleName={post.circleName} />}
         </div>
         <h3 className="text-[16px] font-semibold leading-snug text-[#1C1B19] mb-1 group-hover:text-[#26364A] transition-colors">
           {post.title}

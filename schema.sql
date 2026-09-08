@@ -88,6 +88,35 @@ create table expert_applications (
   submitted_at timestamptz not null default now()
 );
 
+-- User-created groups within the forum (not part of the fixed topic
+-- taxonomy in lib/taxonomy.ts — circles are open-ended and member-driven).
+-- Circle posts stay fully public/searchable like any other post; a circle
+-- is a "belonging + filter" layer, not a private-content boundary. If
+-- private-only circle posts are ever wanted, that's a separate visibility
+-- model on top of this, not a change to this table.
+create table circles (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  description text not null,
+  state char(2), -- optional location scoping, same convention as posts.state
+  created_by uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table circle_memberships (
+  circle_id uuid not null references circles(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  joined_at timestamptz not null default now(),
+  primary key (circle_id, user_id)
+);
+create index circle_memberships_user_idx on circle_memberships(user_id);
+
+-- on delete set null, not cascade — deleting a circle shouldn't delete the
+-- posts made in it, just detach them (they keep showing up in the main
+-- feed/search, same as any other post).
+alter table posts add column circle_id uuid references circles(id) on delete set null;
+create index posts_circle_id_idx on posts(circle_id);
+
 -- Auto-create a profile row when a user signs up, so `profiles` never lags
 -- behind `auth.users`. Picks up the nickname passed as signup metadata
 -- (`options.data.display_name`, see app/signup/page.tsx), falling back to a
@@ -214,6 +243,8 @@ alter table comments enable row level security;
 alter table votes enable row level security;
 alter table post_views enable row level security;
 alter table expert_applications enable row level security;
+alter table circles enable row level security;
+alter table circle_memberships enable row level security;
 
 create policy "profiles are publicly readable" on profiles for select using (true);
 create policy "users update their own profile" on profiles for update using (auth.uid() = id);
@@ -222,10 +253,26 @@ create policy admin_update_any_profile on profiles for update using (
 );
 
 create policy "posts are publicly readable" on posts for select using (true);
-create policy "authenticated users create posts as themselves" on posts for insert with check (auth.uid() = author_id);
+-- Posting into a circle additionally requires membership in that circle —
+-- enforced here (not just in the API route) since posts are insertable
+-- directly at /rest/v1/posts under the anon key.
+create policy "authenticated users create posts as themselves" on posts for insert with check (
+  auth.uid() = author_id
+  and (
+    circle_id is null
+    or exists (select 1 from public.circle_memberships cm where cm.circle_id = posts.circle_id and cm.user_id = auth.uid())
+  )
+);
 
 create policy "comments are publicly readable" on comments for select using (true);
 create policy "authenticated users create comments as themselves" on comments for insert with check (auth.uid() = author_id);
+
+create policy "circles are publicly readable" on circles for select using (true);
+create policy "authenticated users create circles as themselves" on circles for insert with check (auth.uid() = created_by);
+
+create policy "circle memberships are publicly readable" on circle_memberships for select using (true);
+create policy "users join circles as themselves" on circle_memberships for insert with check (auth.uid() = user_id);
+create policy "users leave circles themselves" on circle_memberships for delete using (auth.uid() = user_id);
 
 create policy "users manage their own votes" on votes for all using (auth.uid() = voter_id) with check (auth.uid() = voter_id);
 

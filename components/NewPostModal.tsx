@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Briefcase, Loader2, X } from "lucide-react";
+import { Briefcase, Loader2, Users, X } from "lucide-react";
 import { CATEGORIES } from "@/lib/taxonomy";
 import { US_STATES, zipToState } from "@/lib/location";
 import { useAuth } from "@/lib/auth-context";
@@ -9,12 +9,16 @@ import type { Promo } from "@/lib/types";
 
 export function NewPostModal({
   defaultTopic,
+  circleId = null,
+  circleName = null,
   onClose,
   onSubmit,
 }: {
   defaultTopic: string | null;
+  circleId?: string | null;
+  circleName?: string | null;
   onClose: () => void;
-  onSubmit: (input: { title: string; body: string; topicId: string; state: string; promo: Promo | null }) => Promise<void>;
+  onSubmit: (input: { title: string; body: string; topicId: string; state: string; promo: Promo | null; circleId: string | null }) => Promise<void>;
 }) {
   const { profile } = useAuth();
   const [title, setTitle] = useState("");
@@ -49,6 +53,11 @@ export function NewPostModal({
           <button onClick={onClose} className="text-[#9A968A] hover:text-[#1C1B19]"><X size={18} /></button>
         </div>
         <div className="p-6 flex flex-col gap-4">
+          {circleName && (
+            <div className="flex items-center gap-1.5 text-[12px] font-medium text-[#5B584F] bg-[#EFEDE6] px-3 py-2 -mb-1">
+              <Users size={13} /> Posting in: {circleName}
+            </div>
+          )}
           <div>
             <label className="text-[12px] font-medium text-[#5B584F] block mb-1.5">Title</label>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What's your question or insight?" className={inputClass} />
@@ -107,7 +116,7 @@ export function NewPostModal({
             onClick={async () => {
               setSaving(true);
               const promo = isVerifiedExpert && promoLabel.trim() ? { label: promoLabel.trim(), url: promoUrl.trim() || null } : null;
-              await onSubmit({ title: title.trim(), body: body.trim(), topicId, state, promo });
+              await onSubmit({ title: title.trim(), body: body.trim(), topicId, state, promo, circleId });
               setSaving(false);
             }}
             className="px-4 py-2 text-[14px] font-semibold bg-[#26364A] text-white disabled:opacity-40 flex items-center gap-2 hover:bg-[#1e2c3d] transition-colors">

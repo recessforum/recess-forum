@@ -19,6 +19,18 @@ export interface Post {
   score: number;
   views: number;
   createdAt: number;
+  circleId: string | null;
+  circleName: string | null;
+}
+
+export interface Circle {
+  id: string;
+  name: string;
+  description: string;
+  state: string | null;
+  createdBy: string;
+  memberCount: number;
+  createdAt: number;
 }
 
 export interface Comment {

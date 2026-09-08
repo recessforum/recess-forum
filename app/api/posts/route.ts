@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createPost } from "@/lib/db";
+import { createPost, isCircleMember } from "@/lib/db";
 import { createClient } from "@/lib/supabase/server";
 import type { Promo } from "@/lib/types";
 
@@ -9,6 +9,7 @@ interface NewPostBody {
   topicId: string;
   state: string;
   promo: Promo | null;
+  circleId?: string | null;
 }
 
 export async function POST(req: NextRequest) {
@@ -21,6 +22,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "title, body, and state are required" }, { status: 400 });
   }
 
+  const circleId = data.circleId || null;
+  if (circleId && !(await isCircleMember(supabase, circleId, user.id))) {
+    return NextResponse.json({ error: "join the circle before posting in it" }, { status: 403 });
+  }
+
   const post = await createPost(
     supabase,
     {
@@ -29,6 +35,7 @@ export async function POST(req: NextRequest) {
       topicId: data.topicId,
       state: data.state,
       promo: data.promo || null,
+      circleId,
     },
     user.id
   );

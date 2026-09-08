@@ -8,6 +8,7 @@ import type { Comment, Post } from "@/lib/types";
 import { timeAgo } from "@/lib/ranking";
 import { karmaFor, roleFor, tierFor } from "@/lib/roles";
 import { TopicBadge } from "@/components/TopicBadge";
+import { CircleBadge } from "@/components/CircleBadge";
 import { VoteControl } from "@/components/VoteControl";
 import { AuthorBadges } from "@/components/Badges";
 import { CommentNode } from "@/components/CommentNode";
@@ -138,8 +139,9 @@ export default function PostDetailPage() {
         <ChevronLeft size={15} /> Back
       </button>
 
-      <div className="mb-2">
+      <div className="flex items-center gap-1.5 mb-2">
         <TopicBadge topicId={post.topicId} onClick={() => router.push("/")} />
+        {post.circleId && post.circleName && <CircleBadge circleId={post.circleId} circleName={post.circleName} />}
       </div>
       <h1 className="text-[24px] font-semibold leading-tight text-[#1C1B19] mb-2">{post.title}</h1>
       <div className="text-[13px] text-[#9A968A] mb-4 flex items-center gap-1.5 flex-wrap">

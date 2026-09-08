@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, LogOut, Plus, Shield } from "lucide-react";
+import { BadgeCheck, LogOut, Plus, Shield, Users } from "lucide-react";
 import { RecessMark } from "./RecessMark";
 import { NewPostModal } from "./NewPostModal";
 import { ExpertApplicationModal } from "./ExpertApplicationModal";
@@ -17,7 +17,7 @@ export function Header() {
   const [showNewPost, setShowNewPost] = useState(false);
   const [showExpertApp, setShowExpertApp] = useState(false);
 
-  const handleNewPost = async (input: { title: string; body: string; topicId: string; state: string; promo: Promo | null }) => {
+  const handleNewPost = async (input: { title: string; body: string; topicId: string; state: string; promo: Promo | null; circleId: string | null }) => {
     const res = await fetch("/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -54,6 +54,9 @@ export function Header() {
           </div>
         </Link>
         <div className="flex items-center gap-2">
+          <Link href="/circles" className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#5B584F] hover:text-[#26364A] transition-colors">
+            <Users size={15} /> Circles
+          </Link>
           {profile ? (
             <>
               {profile.role === "admin" && (

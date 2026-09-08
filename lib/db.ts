@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Comment, ExpertApplication, Post, Promo, ProfileRole } from "./types";
+import type { Circle, Comment, ExpertApplication, Post, Promo, ProfileRole } from "./types";
 
 /**
  * Real Supabase-backed persistence (handoff §10 item 2 — replaces the
@@ -20,6 +20,10 @@ interface ProfileEmbed {
   expert_type: string | null;
 }
 
+interface CircleEmbed {
+  name: string;
+}
+
 interface PostRow {
   id: string;
   author_id: string;
@@ -32,6 +36,8 @@ interface PostRow {
   score: number;
   views: number;
   created_at: string;
+  circle_id: string | null;
+  circles: CircleEmbed | CircleEmbed[] | null;
   profiles: ProfileEmbed | ProfileEmbed[] | null;
 }
 
@@ -50,7 +56,7 @@ interface CommentRow {
 // second, indirect path to profiles (through post_views / votes), so a bare
 // `profiles(...)` embed is rejected by PostgREST as ambiguous (PGRST201).
 const POST_SELECT =
-  "id, author_id, title, body, topic_id, state, promo_label, promo_url, score, views, created_at, profiles!posts_author_id_fkey(display_name, role, expert_type)";
+  "id, author_id, title, body, topic_id, state, promo_label, promo_url, score, views, created_at, circle_id, circles!posts_circle_id_fkey(name), profiles!posts_author_id_fkey(display_name, role, expert_type)";
 const COMMENT_SELECT =
   "id, post_id, parent_id, author_id, body, score, created_at, profiles!comments_author_id_fkey(display_name, role, expert_type)";
 
@@ -60,6 +66,7 @@ function embedProfile(p: PostRow["profiles"]): ProfileEmbed | null {
 
 function toPost(row: PostRow): Post {
   const profile = embedProfile(row.profiles);
+  const circle = Array.isArray(row.circles) ? row.circles[0] ?? null : row.circles;
   return {
     id: row.id,
     title: row.title,
@@ -74,6 +81,8 @@ function toPost(row: PostRow): Post {
     score: row.score,
     views: row.views,
     createdAt: new Date(row.created_at).getTime(),
+    circleId: row.circle_id,
+    circleName: circle?.name ?? null,
   };
 }
 
@@ -128,7 +137,7 @@ export async function getComments(supabase: SupabaseClient, postId: string): Pro
 
 export async function createPost(
   supabase: SupabaseClient,
-  input: { title: string; body: string; topicId: string; state: string | null; promo: Promo | null },
+  input: { title: string; body: string; topicId: string; state: string | null; promo: Promo | null; circleId: string | null },
   authorId: string
 ): Promise<Post> {
   const { data, error } = await supabase
@@ -141,6 +150,7 @@ export async function createPost(
       state: input.state,
       promo_label: input.promo?.label ?? null,
       promo_url: input.promo?.url ?? null,
+      circle_id: input.circleId,
       score: 1,
       views: 0,
     })
@@ -296,4 +306,85 @@ export async function reviewExpertApplication(
       .eq("id", application.applicant_id);
     if (updateProfileError) throw updateProfileError;
   }
+}
+
+/**
+ * User-created groups (handoff-adjacent feature, not in the original spec).
+ * Circle posts stay fully public — a circle is a membership/belonging layer
+ * on top of the existing public forum, not a separate visibility model.
+ */
+interface CircleRow {
+  id: string;
+  name: string;
+  description: string;
+  state: string | null;
+  created_by: string;
+  created_at: string;
+  circle_memberships: { count: number }[] | null;
+}
+
+const CIRCLE_SELECT = "id, name, description, state, created_by, created_at, circle_memberships(count)";
+
+function toCircle(row: CircleRow): Circle {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    state: row.state,
+    createdBy: row.created_by,
+    memberCount: row.circle_memberships?.[0]?.count ?? 0,
+    createdAt: new Date(row.created_at).getTime(),
+  };
+}
+
+export async function getCircles(supabase: SupabaseClient): Promise<Circle[]> {
+  const { data, error } = await supabase.from("circles").select(CIRCLE_SELECT).order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data as unknown as CircleRow[]) || []).map(toCircle);
+}
+
+export async function getCircle(supabase: SupabaseClient, id: string): Promise<Circle | undefined> {
+  const { data, error } = await supabase.from("circles").select(CIRCLE_SELECT).eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data ? toCircle(data as unknown as CircleRow) : undefined;
+}
+
+export async function createCircle(
+  supabase: SupabaseClient,
+  input: { name: string; description: string; state: string | null },
+  createdBy: string
+): Promise<Circle> {
+  const { data, error } = await supabase
+    .from("circles")
+    .insert({ name: input.name, description: input.description, state: input.state, created_by: createdBy })
+    .select(CIRCLE_SELECT)
+    .single();
+  if (error) throw error;
+  return toCircle(data as unknown as CircleRow);
+}
+
+export async function isCircleMember(supabase: SupabaseClient, circleId: string, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("circle_memberships")
+    .select("circle_id")
+    .eq("circle_id", circleId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return !!data;
+}
+
+export async function getMyCircleIds(supabase: SupabaseClient, userId: string): Promise<string[]> {
+  const { data, error } = await supabase.from("circle_memberships").select("circle_id").eq("user_id", userId);
+  if (error) throw error;
+  return (data || []).map((r) => r.circle_id);
+}
+
+export async function joinCircle(supabase: SupabaseClient, circleId: string, userId: string): Promise<void> {
+  const { error } = await supabase.from("circle_memberships").upsert({ circle_id: circleId, user_id: userId });
+  if (error) throw error;
+}
+
+export async function leaveCircle(supabase: SupabaseClient, circleId: string, userId: string): Promise<void> {
+  const { error } = await supabase.from("circle_memberships").delete().eq("circle_id", circleId).eq("user_id", userId);
+  if (error) throw error;
 }
