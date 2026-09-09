@@ -69,10 +69,37 @@ attempt correctly round-trips to Supabase auth and returns "Invalid login
 credentials" — confirming prod is talking to the real project, not a stale
 build.
 
-**Known gap**: Supabase's default email sender has strict rate limits (a
-handful of emails/hour) that will start bouncing signup-confirmation emails
-under any real signup volume. Worth swapping in a custom SMTP provider
-(Supabase dashboard → Authentication → Emails) before any real launch push.
+## Custom SMTP (done)
+
+Supabase's default email sender has strict rate limits (a handful of
+emails/hour) that would have started bouncing signup-confirmation emails
+under any real signup volume. Replaced with **Resend** as a custom SMTP
+provider (Supabase dashboard → Authentication → Emails → SMTP Settings:
+host `smtp.resend.com`, port `465`, username `resend`, password a Resend
+API key), sending from `noreply@recessforum.com`.
+
+`recessforum.com` was bought specifically for this (separate from
+mentodari/FrameHonest domains) and verified in Resend via 3 DNS records
+added at the registrar (IONOS): one TXT (DKIM) and two CNAME records for
+SPF/sending infrastructure.
+
+**Real bug caught during setup** — after switching to Resend, confirmation
+emails sent fine but the link in them led nowhere in production
+("no site"). Cause: Supabase's Authentication → URL Configuration still
+had the default **Site URL** of `http://localhost:3000` and **no Redirect
+URLs** configured, so it had no allowed production destination to send
+users to after confirming. Fixed by setting Site URL to
+`https://recess-forum.vercel.app` and adding
+`https://recess-forum.vercel.app/**` and `http://localhost:3000/**` as
+allowed Redirect URLs. This is a separate failure mode from the SMTP
+rate limit — email deliverability and post-confirmation redirect are two
+independent things to get right, and only one of them fails loudly (a
+bounced email vs. a link that silently goes to `localhost`).
+
+Verified end-to-end against the live site (not just the SMTP dashboard
+test): signed up with a real address, received the email via Resend,
+clicked the confirmation link, and landed on the real site logged in.
+Test accounts were deleted afterward.
 
 ## Auth (done)
 
