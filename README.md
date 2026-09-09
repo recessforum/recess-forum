@@ -69,6 +69,16 @@ attempt correctly round-trips to Supabase auth and returns "Invalid login
 credentials" — confirming prod is talking to the real project, not a stale
 build.
 
+**Custom domain (done)**: `recessforum.com` is connected in Vercel and live
+alongside `recess-forum.vercel.app` (which still works). DNS is at IONOS:
+an `A` record on `@` → `216.198.79.1` and a `CNAME` on `www` → the
+per-project target Vercel issued, with the apex redirecting (308) to
+`www.recessforum.com` per Vercel's recommended setup. Supabase's
+Authentication → URL Configuration Site URL and Redirect URLs were updated
+to `https://www.recessforum.com` (keeping the `recess-forum.vercel.app` and
+`localhost:3000` entries too) so auth email links point at the real domain
+going forward.
+
 ## Custom SMTP (done)
 
 Supabase's default email sender has strict rate limits (a handful of

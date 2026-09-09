@@ -10,6 +10,7 @@ import { hotScore, rangeCutoff } from "@/lib/ranking";
 import { roleFor, tierFor } from "@/lib/roles";
 import type { Comment, Post } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
+import { MobileTopicDrawer } from "@/components/MobileTopicDrawer";
 import { PostRow } from "@/components/PostRow";
 import { useAuth } from "@/lib/auth-context";
 
@@ -116,6 +117,8 @@ export default function HomePage() {
             <div className="text-[13px] text-[#5B584F] mt-0.5">All topics in this category</div>
           </div>
         )}
+
+        <MobileTopicDrawer selectedTopic={selectedTopic} onSelectTopic={goTopic} />
 
         <div className="relative mb-3">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A968A]" />
