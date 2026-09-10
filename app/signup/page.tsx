@@ -16,6 +16,14 @@ export default function SignupPage() {
   const inputClass = "w-full px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A] transition-colors";
   const canSubmit = email.trim() && password.length >= 6 && nickname.trim() && !sending;
 
+  const signInWithGoogle = async () => {
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+  };
+
   const submit = async () => {
     setError(null);
     setSending(true);
@@ -50,11 +58,9 @@ export default function SignupPage() {
       <h1 className="text-[22px] font-semibold text-[#1C1B19] mb-1">Create an account</h1>
       <p className="text-[13px] text-[#9A968A] mb-6">Join the conversation — post under a nickname if you&apos;d rather not use your name.</p>
 
-      <button
-        disabled
-        title="Google sign-in needs a Google Cloud OAuth client configured on the project — coming soon"
-        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-[#E6E3DA] text-[14px] font-medium text-[#9A968A] mb-4 cursor-not-allowed">
-        Continue with Google <span className="text-[11px]">(coming soon)</span>
+      <button onClick={signInWithGoogle}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-[#E6E3DA] text-[14px] font-medium text-[#1C1B19] mb-4 hover:bg-[#FAF9F7] transition-colors">
+        Continue with Google
       </button>
 
       <div className="flex items-center gap-3 mb-4">
