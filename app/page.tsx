@@ -86,7 +86,7 @@ export default function HomePage() {
       if (!selectedTopic && selectedCategory && topicById(p.topicId)?.categoryId !== selectedCategory) return false;
       if (selectedState && p.state !== selectedState) return false;
       if (!q) return true;
-      return `${p.title} ${p.body} ${topicLabel(p.topicId)} ${p.author}`.toLowerCase().includes(q);
+      return `${p.title} ${p.body ?? ""} ${topicLabel(p.topicId)} ${p.author}`.toLowerCase().includes(q);
     });
     if (sort === "top") {
       const cutoff = rangeCutoff(topRange);

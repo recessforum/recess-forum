@@ -22,7 +22,7 @@ export function NewPostModal({
   circleId?: string | null;
   circleName?: string | null;
   onClose: () => void;
-  onSubmit: (input: { title: string; body: string; topicId: string; state: string; promo: Promo | null; circleId: string | null; imageUrl: string | null }) => Promise<void>;
+  onSubmit: (input: { title: string; body: string | null; topicId: string; state: string; promo: Promo | null; circleId: string | null; imageUrl: string | null }) => Promise<void>;
 }) {
   const { profile } = useAuth();
   const [title, setTitle] = useState("");
@@ -37,7 +37,7 @@ export function NewPostModal({
   const [imageError, setImageError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const canSubmit = title.trim() && body.trim() && state && !saving;
+  const canSubmit = title.trim() && state && !saving;
   const inputClass = "w-full px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A] transition-colors";
   const isVerifiedExpert = profile?.role === "verified_expert";
 
@@ -93,8 +93,10 @@ export function NewPostModal({
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What's your question or insight?" className={inputClass} />
           </div>
           <div>
-            <label className="text-[12px] font-medium text-[#5B584F] block mb-1.5">Details</label>
-            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Give other parents the context they need to help."
+            <label className="text-[12px] font-medium text-[#5B584F] block mb-1.5">
+              Details <span className="text-[#9A968A] font-normal">(optional)</span>
+            </label>
+            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Give other parents the context they need to help — or leave blank if the title says it all."
               className={`${inputClass} resize-none`} />
           </div>
           <div className="grid grid-cols-[1fr_1fr] gap-3">
@@ -188,7 +190,7 @@ export function NewPostModal({
 
               const promo = isVerifiedExpert && promoLabel.trim() ? { label: promoLabel.trim(), url: promoUrl.trim() || null } : null;
               try {
-                await onSubmit({ title: title.trim(), body: body.trim(), topicId, state, promo, circleId, imageUrl });
+                await onSubmit({ title: title.trim(), body: body.trim() || null, topicId, state, promo, circleId, imageUrl });
               } catch (err) {
                 setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
               }

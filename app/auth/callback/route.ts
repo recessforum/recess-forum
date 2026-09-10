@@ -12,6 +12,13 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from("profiles").select("nickname_set").eq("id", user.id).single();
+        if (profile && !profile.nickname_set) {
+          return NextResponse.redirect(`${origin}/welcome?next=${encodeURIComponent(next)}`);
+        }
+      }
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

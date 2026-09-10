@@ -18,14 +18,15 @@ create table profiles (
   state char(2), -- derived from zip client-side, never the raw zip (handoff §7)
   email_notifications_enabled boolean not null default true, -- reply-to-your-post/comment emails
   avatar_url text, -- public URL into the 'avatars' storage bucket; null falls back to initials in the UI
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  nickname_set boolean not null default false -- false means display_name is the auto-generated 'user_xxxxxxxx' placeholder (Google sign-in doesn't supply one); gates the /welcome nickname prompt
 );
 
 create table posts (
   id uuid primary key default gen_random_uuid(),
   author_id uuid not null references profiles(id) on delete cascade,
   title text not null,
-  body text not null,
+  body text, -- optional: only the title is required when creating a post
   topic_id text not null, -- matches an id in lib/taxonomy.ts; not FK'd since taxonomy is code, not data
   state char(2) not null,
   promo_label text, -- Verified Expert business-mention perk (handoff §6); null unless author is verified
@@ -158,12 +159,13 @@ security definer
 set search_path = public
 as $$
 declare
-  chosen_name text := coalesce(nullif(trim(new.raw_user_meta_data->>'display_name'), ''), 'user_' || substr(new.id::text, 1, 8));
+  supplied_name text := nullif(trim(new.raw_user_meta_data->>'display_name'), '');
+  chosen_name text := coalesce(supplied_name, 'user_' || substr(new.id::text, 1, 8));
 begin
   begin
-    insert into public.profiles (id, display_name) values (new.id, chosen_name);
+    insert into public.profiles (id, display_name, nickname_set) values (new.id, chosen_name, supplied_name is not null);
   exception when unique_violation then
-    insert into public.profiles (id, display_name) values (new.id, chosen_name || '_' || substr(new.id::text, 1, 4));
+    insert into public.profiles (id, display_name, nickname_set) values (new.id, chosen_name || '_' || substr(new.id::text, 1, 4), supplied_name is not null);
   end;
   return new;
 end;
@@ -290,6 +292,9 @@ create policy "posts are publicly readable" on posts for select using (
 -- Posting into a circle additionally requires membership in that circle —
 -- enforced here (not just in the API route) since posts are insertable
 -- directly at /rest/v1/posts under the anon key.
+create policy "authors update their own posts" on posts for update using (auth.uid() = author_id) with check (auth.uid() = author_id);
+create policy "authors delete their own posts" on posts for delete using (auth.uid() = author_id);
+
 create policy "authenticated users create posts as themselves" on posts for insert with check (
   auth.uid() = author_id
   and (

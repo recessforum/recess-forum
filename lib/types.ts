@@ -8,7 +8,7 @@ export type ProfileRole = "member" | "verified_expert" | "admin";
 export interface Post {
   id: string;
   title: string;
-  body: string;
+  body: string | null;
   author: string; // profiles.display_name, joined at read time
   authorId: string;
   authorRole: ProfileRole;

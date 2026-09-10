@@ -43,7 +43,7 @@ export function PostRow({
         <h3 className="text-[16px] font-semibold leading-snug text-[#1C1B19] mb-1 group-hover:text-[#26364A] transition-colors">
           {post.title}
         </h3>
-        <p className="text-[14px] text-[#5B584F] leading-relaxed line-clamp-2 mb-1.5">{post.body}</p>
+        {post.body && <p className="text-[14px] text-[#5B584F] leading-relaxed line-clamp-2 mb-1.5">{post.body}</p>}
         {post.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- user-uploaded post photos, arbitrary Supabase Storage objects
           <img src={post.imageUrl} alt="" className="w-full max-h-64 object-cover mb-1.5" />

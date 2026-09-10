@@ -34,6 +34,12 @@ export default function PostDetailPage() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const viewedRef = useRef(false);
 
   useEffect(() => {
@@ -109,6 +115,38 @@ export default function PostDetailPage() {
     setCommentVoteDirs((s) => ({ ...s, [data.comment.id]: 1 }));
   };
 
+  const startEditing = () => {
+    if (!post) return;
+    setEditTitle(post.title);
+    setEditBody(post.body ?? "");
+    setEditError(null);
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!post || !editTitle.trim()) return;
+    setEditSaving(true);
+    setEditError(null);
+    const res = await fetch(`/api/posts/${post.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: editTitle.trim(), body: editBody.trim() || null }),
+    });
+    const data = await res.json();
+    setEditSaving(false);
+    if (!res.ok) { setEditError(data.error || "Something went wrong. Please try again."); return; }
+    setPost(data.post);
+    setEditing(false);
+  };
+
+  const deletePost = async () => {
+    if (!post || !window.confirm("Delete this post? This can't be undone.")) return;
+    setDeleting(true);
+    const res = await fetch(`/api/posts/${post.id}`, { method: "DELETE" });
+    if (res.ok) { router.push("/"); return; }
+    setDeleting(false);
+  };
+
   const submitTopLevel = async () => {
     if (!text.trim() || !post) return;
     setSending(true);
@@ -151,7 +189,12 @@ export default function PostDetailPage() {
         <TopicBadge topicId={post.topicId} onClick={() => router.push("/")} />
         {post.circleId && post.circleName && <CircleBadge circleId={post.circleId} circleName={post.circleName} />}
       </div>
-      <h1 className="text-[24px] font-semibold leading-tight text-[#1C1B19] mb-2">{post.title}</h1>
+      {editing ? (
+        <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+          className="w-full text-[24px] font-semibold leading-tight text-[#1C1B19] mb-2 px-2 py-1 border border-[#E6E3DA] bg-[#FAF9F7] outline-none focus:border-[#26364A]" />
+      ) : (
+        <h1 className="text-[24px] font-semibold leading-tight text-[#1C1B19] mb-2">{post.title}</h1>
+      )}
       <div className="text-[13px] text-[#9A968A] mb-4 flex items-center gap-1.5 flex-wrap">
         <Link href={`/u/${post.authorId}`} className="flex items-center gap-1.5 hover:text-[#26364A]">
           <Avatar url={post.authorAvatarUrl} name={post.author} size={20} />
@@ -164,10 +207,34 @@ export default function PostDetailPage() {
         )}
         <span>· {timeAgo(post.createdAt)} ago</span>
         <span className="flex items-center gap-0.5">· <Eye size={12} className="ml-1" /> {post.views || 0} views</span>
-        <AuthorMenu targetType="post" targetId={post.id} authorId={post.authorId} authorName={post.author}
-          onBlocked={() => router.push("/")} />
+        {profile?.id === post.authorId ? (
+          <>
+            <button onClick={startEditing} className="text-[12px] font-medium text-[#9A968A] hover:text-[#26364A]">Edit</button>
+            <button disabled={deleting} onClick={deletePost} className="text-[12px] font-medium text-[#9A968A] hover:text-[#B23B3B] disabled:opacity-40">
+              {deleting ? "Deleting..." : "Delete"}
+            </button>
+          </>
+        ) : (
+          <AuthorMenu targetType="post" targetId={post.id} authorId={post.authorId} authorName={post.author}
+            onBlocked={() => router.push("/")} />
+        )}
       </div>
-      <p className="text-[15px] text-[#3A382F] leading-relaxed mb-4 whitespace-pre-wrap">{post.body}</p>
+      {editing ? (
+        <div className="mb-4">
+          <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={5} placeholder="Details (optional)"
+            className="w-full px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[15px] outline-none focus:border-[#26364A] resize-none mb-2" />
+          {editError && <p className="text-[13px] text-[#B23B3B] mb-2">{editError}</p>}
+          <div className="flex gap-2">
+            <button disabled={!editTitle.trim() || editSaving} onClick={saveEdit}
+              className="px-4 py-2 text-[14px] font-semibold bg-[#26364A] text-white disabled:opacity-40 flex items-center gap-2 hover:bg-[#1e2c3d] transition-colors">
+              {editSaving && <Loader2 size={14} className="animate-spin" />} Save
+            </button>
+            <button onClick={() => setEditing(false)} className="px-4 py-2 text-[14px] font-medium text-[#5B584F]">Cancel</button>
+          </div>
+        </div>
+      ) : (
+        post.body && <p className="text-[15px] text-[#3A382F] leading-relaxed mb-4 whitespace-pre-wrap">{post.body}</p>
+      )}
       {post.imageUrl && (
         // eslint-disable-next-line @next/next/no-img-element -- user-uploaded post photo, arbitrary Supabase Storage object
         <img src={post.imageUrl} alt="" className="w-full max-h-[480px] object-cover mb-4" />

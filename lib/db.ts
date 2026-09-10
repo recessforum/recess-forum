@@ -29,7 +29,7 @@ interface PostRow {
   id: string;
   author_id: string;
   title: string;
-  body: string;
+  body: string | null;
   topic_id: string;
   state: string | null;
   promo_label: string | null;
@@ -142,7 +142,7 @@ export async function getComments(supabase: SupabaseClient, postId: string): Pro
 
 export async function createPost(
   supabase: SupabaseClient,
-  input: { title: string; body: string; topicId: string; state: string | null; promo: Promo | null; circleId: string | null; imageUrl: string | null },
+  input: { title: string; body: string | null; topicId: string; state: string | null; promo: Promo | null; circleId: string | null; imageUrl: string | null },
   authorId: string
 ): Promise<Post> {
   const { data, error } = await supabase
@@ -166,6 +166,27 @@ export async function createPost(
 
   await supabase.from("votes").insert({ voter_id: authorId, target_type: "post", target_id: data.id, dir: 1 });
   return toPost(data as unknown as PostRow);
+}
+
+export async function updatePost(
+  supabase: SupabaseClient,
+  id: string,
+  input: { title: string; body: string | null }
+): Promise<Post> {
+  const { data, error } = await supabase
+    .from("posts")
+    .update({ title: input.title, body: input.body })
+    .eq("id", id)
+    .select(POST_SELECT)
+    .single();
+  if (error) throw error;
+  return toPost(data as unknown as PostRow);
+}
+
+export async function deletePost(supabase: SupabaseClient, id: string): Promise<void> {
+  const { error, count } = await supabase.from("posts").delete({ count: "exact" }).eq("id", id);
+  if (error) throw error;
+  if (!count) throw new Error("post not found or not authorized");
 }
 
 export async function addComment(
@@ -397,6 +418,11 @@ export async function leaveCircle(supabase: SupabaseClient, circleId: string, us
 
 export async function updateAvatar(supabase: SupabaseClient, userId: string, avatarUrl: string | null): Promise<void> {
   const { error } = await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", userId);
+  if (error) throw error;
+}
+
+export async function updateDisplayName(supabase: SupabaseClient, userId: string, displayName: string): Promise<void> {
+  const { error } = await supabase.from("profiles").update({ display_name: displayName, nickname_set: true }).eq("id", userId);
   if (error) throw error;
 }
 

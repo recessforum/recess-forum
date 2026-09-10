@@ -385,6 +385,76 @@ from the post detail page, and confirmed the profile page showed the
 correct karma/post count/join time. Test account and its post deleted
 afterward.
 
+## Nickname prompt on first sign-in (done)
+
+Google sign-in never supplied a `display_name`, so `handle_new_user()`
+silently fell back to an auto-generated `user_xxxxxxxx` name with no way
+for the person to pick their own — the email/password flow was fine since
+`signup/page.tsx` collects a nickname up front and passes it as signup
+metadata. Fixed with a new `profiles.nickname_set` boolean: the trigger
+now sets it `true` only when signup metadata actually supplied a name
+(email/password path), `false` otherwise (Google path, or any other
+account-creation route that doesn't collect one). `auth/callback/route.ts`
+checks it after exchanging the OAuth code and redirects to a new
+`/welcome` page instead of home when it's `false`; `/welcome` posts to a
+new `POST /api/profile/nickname` (`updateDisplayName()` in `lib/db.ts`),
+which sets both `display_name` and `nickname_set = true`, surfacing a
+"that nickname is already taken" error on a unique-constraint collision
+(`profiles.display_name` is unique).
+
+Verified against real production data, not just a synthetic case: a
+disposable Supabase-created test account (no metadata, matching the
+Google-signup shape) landed on `/welcome` logic with `nickname_set =
+false` as expected; submitting a nickname flipped it to `true` and
+updated `display_name`, confirmed by querying `profiles` directly.
+Submitting an already-taken name (`user_9ad46771`, another account's
+existing auto-generated name) correctly surfaced the "already taken"
+error instead of silently succeeding.
+
+**This also surfaced a live-data issue, since backfilled**: every real
+account that existed at the time this shipped (all via Google) had
+`nickname_set = false` and was walking around the site as `user_xxxxxxxx`
+— Supabase's own Auth dashboard showed their real Google name only
+because it separately reads OAuth-provided metadata, which was never
+carried into `profiles.display_name`. Backfilled with a one-off SQL block
+(`coalesce(raw_user_meta_data->>'full_name', ->>'name')` per account,
+falling back to the trigger's own `<name>_<id prefix>` disambiguation on a
+collision — two accounts really were both "Steven Kim" at the time), then
+manually renamed the one collision that landed awkwardly. Went smoothly
+because there were only 5 accounts; a later, larger-scale version of the
+same problem would need the same query but should announce the rename
+rather than doing it silently.
+
+## Post edit/delete, optional post body, thumbs vote icons (done)
+
+Three small changes bundled together:
+
+- **Edit/delete your own posts** — `PATCH`/`DELETE /api/posts/[id]` (new
+  `updatePost()`/`deletePost()` in `lib/db.ts`), with the author check done
+  twice: once explicitly in the route (for a clean 403 with a real message)
+  and again for real by two new RLS policies (`authors update/delete their
+  own posts`, `auth.uid() = author_id`) — the route check is a UX nicety,
+  the DB policy is what actually stops a spoofed request. The post detail
+  page shows inline "Edit"/"Delete" text buttons instead of the report/block
+  menu when `profile.id === post.authorId`; Edit swaps the title/body into
+  an editable input+textarea in place, Delete confirms then redirects home.
+- **Post body is now optional** — `posts.body` dropped its `not null`
+  constraint; creating a post only requires a title. `NewPostModal`'s
+  Details field is labeled "(optional)"; every place that rendered
+  `post.body` (`PostRow`, post detail, the client-side search filter in
+  `app/page.tsx`) now guards for `null` instead of assuming a string.
+- **Vote icons are thumbs up/down**, not arrows (`VoteControl.tsx`) — same
+  score/toggle logic, `ThumbsUp`/`ThumbsDown` from lucide-react instead of
+  `ArrowUp`/`ArrowDown`, with the active direction rendered filled.
+
+Verified end-to-end with a disposable test account: created a title-only
+post (body left blank, submit button confirmed enabled without one),
+edited both its title and body in place and confirmed the change survived
+a reload, deleted it and confirmed `/post/[id]` then 404ed. Also confirmed
+the ownership check for real — direct `PATCH`/`DELETE` calls against
+another real user's post both correctly returned 403 rather than silently
+no-op'ing or succeeding.
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final
@@ -419,11 +489,16 @@ were ported faithfully.
 7. ~~Violent-content filter~~ — **done** and live in production, verified
    against the real API (see above).
 8. ~~Public author profile pages~~ — **done** (see above).
-9. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
-   (school/IEP/discipline topics where a wrong answer causes real harm)
-   and the risk of undercutting real-parent replies before the community
-   has any critical mass outweigh the payoff right now; revisit once
-   there's an established base of human answers, possibly scoped to
-   "AI answers only when no human has yet."
-10. Everything else (a moderation action tied to a report — e.g. deleting
+9. ~~Nickname prompt on first (Google) sign-in~~ — **done**, including a
+   one-off backfill of the accounts that existed before this fix (see
+   above).
+10. ~~Post edit/delete, optional post body, thumbs vote icons~~ — **done**
+    (see above).
+11. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
+    (school/IEP/discipline topics where a wrong answer causes real harm)
+    and the risk of undercutting real-parent replies before the community
+    has any critical mass outweigh the payoff right now; revisit once
+    there's an established base of human answers, possibly scoped to
+    "AI answers only when no human has yet."
+12. Everything else (a moderation action tied to a report — e.g. deleting
     the reported content directly from `/admin`) — not designed yet.

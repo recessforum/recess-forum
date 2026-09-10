@@ -6,7 +6,7 @@ import type { Promo } from "@/lib/types";
 
 interface NewPostBody {
   title: string;
-  body: string;
+  body: string | null;
   topicId: string;
   state: string;
   promo: Promo | null;
@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "log in to post" }, { status: 401 });
 
   const data = (await req.json()) as NewPostBody;
-  if (!data.title?.trim() || !data.body?.trim() || !data.state) {
-    return NextResponse.json({ error: "title, body, and state are required" }, { status: 400 });
+  if (!data.title?.trim() || !data.state) {
+    return NextResponse.json({ error: "title and state are required" }, { status: 400 });
   }
 
   const circleId = data.circleId || null;
@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "join the circle before posting in it" }, { status: 403 });
   }
 
-  if (await containsViolentContent(`${data.title}\n\n${data.body}`)) {
+  const body = data.body?.trim() || null;
+  if (await containsViolentContent(`${data.title}\n\n${body ?? ""}`)) {
     return NextResponse.json(
       { error: "This post appears to contain violent content and can't be published. If you're describing a safety concern (e.g. bullying), try rephrasing without graphic or threatening language." },
       { status: 422 }
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
     supabase,
     {
       title: data.title.trim(),
-      body: data.body.trim(),
+      body,
       topicId: data.topicId,
       state: data.state,
       promo: data.promo || null,
