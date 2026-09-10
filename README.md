@@ -231,6 +231,83 @@ Verified end-to-end: uploaded a real PDF as a test applicant, confirmed the
 object landed at the expected `{uid}/...` path, opened it as admin via the
 signed-URL route, and approved the application.
 
+## Email notifications (done)
+
+Reply notifications only — the post/comment author gets a transactional
+email when someone replies. (Topic-interest digest emails, the other half
+of the original ask, are a separate feature: they need a "follow a topic"
+concept that doesn't exist yet, so they're deferred rather than guessed at.)
+
+Sending goes through a raw `fetch` to Resend's HTTP API (`lib/email.ts`) —
+not the SMTP integration Supabase Auth uses for its own emails, and no
+`resend` package dependency, just one POST. Needs `RESEND_API_KEY` (the
+same key already used for Supabase's SMTP works fine).
+
+Looking up the recipient's email needed a new **service-role Supabase
+client** (`lib/supabase/admin.ts`, needs `SUPABASE_SERVICE_ROLE_KEY`) —
+the app had none before this. `profiles` deliberately has no email column
+(it's publicly readable via RLS, so putting email there would leak every
+user's address to anyone); email only lives in `auth.users`, which only a
+service-role client can read. This is the only place in the codebase that
+uses a service-role client — every other read/write still goes through the
+request-scoped, RLS-respecting client.
+
+`profiles.email_notifications_enabled` (default `true`) is checked before
+sending — no settings UI for it yet, so turning it off means updating the
+column directly for now. The trigger site is `notifyOnComment()`
+(`lib/notifications.ts`), called from the comment-creation route after the
+comment is inserted; it never throws — a failed send logs and moves on
+rather than failing the comment itself.
+
+## Profile pictures (done)
+
+`profiles.avatar_url` — set via a new public `avatars` Storage bucket
+(unlike `expert-credentials`, this one's public: an avatar is meant to be
+visible to anyone viewing a post, not gated behind auth). Same
+own-uid-folder RLS pattern as credentials (write only under
+`{auth.uid()}/...`), just with public `select` instead of self-and-admin.
+Uploaded from `/settings`, at a fixed path (`{uid}/avatar.{ext}`, `upsert:
+true`) so re-uploading replaces the old one instead of accumulating
+orphaned files, with a cache-busting query param appended to the saved URL
+so the new image shows immediately.
+
+`components/Avatar.tsx` renders the image when `avatar_url` is set, or
+falls back to a colored circle with the user's first initial — every
+place an author's name shows (`PostRow`, `CommentNode`, the post detail
+page, the header) now shows the avatar next to it.
+
+## Report & block (done)
+
+**Report** — a "···" menu (`components/AuthorMenu.tsx`) next to a post or
+comment's author opens a reason picker (`components/ReportModal.tsx`) and
+inserts a row into a new `reports` table. Admins review pending reports on
+`/admin` (extended, not a separate page) and mark them reviewed or
+dismissed — this doesn't automatically remove the reported content, just
+queues it for a human to look at.
+
+**Block** — also from the "···" menu. The interesting part isn't the
+`blocks` table (blocker_id, blocked_id) — it's that `posts`/`comments`
+select RLS changed from a bare `using (true)` to excluding rows whose
+author you've blocked:
+```sql
+using (not exists (select 1 from public.blocks b where b.blocker_id = auth.uid() and b.blocked_id = posts.author_id))
+```
+Blocking someone hides their posts and comments everywhere — feed, search,
+post detail — for free, with no changes needed to any query in `lib/db.ts`,
+because the filtering happens at the database layer for every read that
+uses the caller's own session. Logged-out visitors (`auth.uid()` is null)
+are unaffected, since the subquery can never match. `/settings` lists
+currently-blocked users with an unblock button — right now that's the only
+way to manage blocks (no confirmation-free "quick block," a native
+`confirm()` gates the action from the menu).
+
+Verified end-to-end with two real accounts: uploaded an avatar and
+confirmed it rendered everywhere the author's name appears; reported a
+post and confirmed the row landed in `reports` with the right reporter/
+reason; blocked the post's author and confirmed the post disappeared from
+the feed, the post detail route started 404ing, and both reverted after
+unblocking. Test accounts and data deleted afterward.
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final
@@ -258,5 +335,10 @@ were ported faithfully.
    applications with approve/reject (see above).
 4. ~~Real file upload for credentials~~ — **done**. Real Supabase Storage
    bucket, RLS-scoped, admin access via signed URL (see above).
-5. Everything else (moderation tools, reporting, notifications) — not
-   designed yet, per the handoff.
+5. ~~Reply email notifications, profile pictures, report, block~~ — **done**
+   (see above). Topic-interest digest emails are still open — need a
+   "follow a topic" feature first, which doesn't exist yet.
+6. Everything else (a moderation action tied to a report — e.g. deleting
+   the reported content directly from `/admin` — AI-assisted Q&A, photo
+   uploads on posts, a content filter, a public author profile page) — not
+   designed yet.

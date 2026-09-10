@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Loader2, X } from "lucide-react";
+import { BadgeCheck, Flag, Loader2, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { timeAgo } from "@/lib/ranking";
-import type { ExpertApplication } from "@/lib/types";
+import type { ExpertApplication, Report } from "@/lib/types";
 
 type Application = ExpertApplication & { applicantName: string };
 
@@ -13,6 +13,7 @@ export default function AdminPage() {
   const router = useRouter();
   const { profile, loading: authLoading } = useAuth();
   const [applications, setApplications] = useState<Application[] | null>(null);
+  const [reports, setReports] = useState<Report[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [workingId, setWorkingId] = useState<string | null>(null);
@@ -21,10 +22,14 @@ export default function AdminPage() {
     (async () => {
       if (!profile || profile.role !== "admin") { setLoading(false); return; }
       try {
-        const res = await fetch("/api/admin/expert-applications");
-        if (!res.ok) throw new Error((await res.json()).error || "failed to load");
-        const data = await res.json();
-        setApplications(data.applications);
+        const [appsRes, reportsRes] = await Promise.all([
+          fetch("/api/admin/expert-applications"),
+          fetch("/api/admin/reports"),
+        ]);
+        if (!appsRes.ok) throw new Error((await appsRes.json()).error || "failed to load");
+        if (!reportsRes.ok) throw new Error((await reportsRes.json()).error || "failed to load");
+        setApplications((await appsRes.json()).applications);
+        setReports((await reportsRes.json()).reports);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Couldn't load applications.");
       } finally {
@@ -39,6 +44,17 @@ export default function AdminPage() {
     if (res.ok) {
       setApplications((apps) => apps?.map((a) =>
         a.id === id ? { ...a, status: decision === "approve" ? "approved" : "rejected" } : a
+      ) ?? null);
+    }
+    setWorkingId(null);
+  };
+
+  const resolveReport = async (id: string, decision: "resolve" | "dismiss") => {
+    setWorkingId(id);
+    const res = await fetch(`/api/admin/reports/${id}/${decision}`, { method: "POST" });
+    if (res.ok) {
+      setReports((rs) => rs?.map((r) =>
+        r.id === id ? { ...r, status: decision === "resolve" ? "reviewed" : "dismissed" } : r
       ) ?? null);
     }
     setWorkingId(null);
@@ -72,6 +88,8 @@ export default function AdminPage() {
 
   const pending = (applications || []).filter((a) => a.status === "pending");
   const reviewed = (applications || []).filter((a) => a.status !== "pending");
+  const pendingReports = (reports || []).filter((r) => r.status === "pending");
+  const resolvedReports = (reports || []).filter((r) => r.status !== "pending");
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 w-full">
@@ -117,11 +135,60 @@ export default function AdminPage() {
       {reviewed.length > 0 && (
         <>
           <h2 className="text-[13px] font-semibold text-[#5B584F] uppercase tracking-wide mb-2">Reviewed</h2>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 mb-8">
             {reviewed.map((app) => (
               <div key={app.id} className="flex items-center justify-between text-[13px] text-[#5B584F] py-2 border-b border-[#E6E3DA]">
                 <span>{app.applicantName} — {app.expertType}</span>
                 <span className={app.status === "approved" ? "text-[#217A78] font-medium" : "text-[#9A968A]"}>{app.status}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <h2 className="text-[13px] font-semibold text-[#5B584F] uppercase tracking-wide mb-2 mt-4">Reports — Pending ({pendingReports.length})</h2>
+      {pendingReports.length === 0 ? (
+        <p className="text-[14px] text-[#9A968A] italic mb-8">Nothing waiting on review.</p>
+      ) : (
+        <div className="flex flex-col gap-3 mb-8">
+          {pendingReports.map((r) => (
+            <div key={r.id} className="border border-[#E6E3DA] bg-white p-4">
+              <div className="flex items-center justify-between mb-1">
+                <span className="flex items-center gap-1.5 text-[13px] font-semibold text-[#1C1B19]">
+                  <Flag size={13} className="text-[#B23B3B]" /> {r.targetType} reported
+                </span>
+                <span className="text-[12px] text-[#9A968A]">{timeAgo(r.createdAt)} ago</span>
+              </div>
+              <p className="text-[13px] text-[#5B584F] mb-1">Reason: {r.reason}</p>
+              <p className="text-[12px] text-[#9A968A] mb-1">Reported by {r.reporterName}</p>
+              {r.targetType === "post" && (
+                <a href={`/post/${r.targetId}`} target="_blank" rel="noopener noreferrer" className="text-[12px] text-[#26364A] underline mb-3 inline-block">
+                  View post
+                </a>
+              )}
+              <div className="flex gap-2 mt-3">
+                <button disabled={workingId === r.id} onClick={() => resolveReport(r.id, "resolve")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-semibold bg-[#217A78] text-white disabled:opacity-40 hover:bg-[#1a615f] transition-colors">
+                  {workingId === r.id ? <Loader2 size={13} className="animate-spin" /> : <BadgeCheck size={13} />} Mark reviewed
+                </button>
+                <button disabled={workingId === r.id} onClick={() => resolveReport(r.id, "dismiss")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[#5B584F] border border-[#E6E3DA] disabled:opacity-40 hover:text-[#B23B3B] hover:border-[#B23B3B] transition-colors">
+                  <X size={13} /> Dismiss
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {resolvedReports.length > 0 && (
+        <>
+          <h2 className="text-[13px] font-semibold text-[#5B584F] uppercase tracking-wide mb-2">Reports — Resolved</h2>
+          <div className="flex flex-col gap-2">
+            {resolvedReports.map((r) => (
+              <div key={r.id} className="flex items-center justify-between text-[13px] text-[#5B584F] py-2 border-b border-[#E6E3DA]">
+                <span>{r.targetType} — {r.reason}</span>
+                <span className={r.status === "reviewed" ? "text-[#217A78] font-medium" : "text-[#9A968A]"}>{r.status}</span>
               </div>
             ))}
           </div>

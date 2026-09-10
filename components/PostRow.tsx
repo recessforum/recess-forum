@@ -8,6 +8,7 @@ import { VoteControl } from "./VoteControl";
 import { TopicBadge } from "./TopicBadge";
 import { CircleBadge } from "./CircleBadge";
 import { AuthorBadges } from "./Badges";
+import { Avatar } from "./Avatar";
 import { Briefcase } from "lucide-react";
 
 type TierWithIcon = (Tier & { icon: "crown" | "star" | "sprout" | "rocket"; text: string; bg: string }) | null;
@@ -48,6 +49,7 @@ export function PostRow({
           </div>
         )}
         <div className="flex items-center gap-2 text-[12px] text-[#9A968A]">
+          <Avatar url={post.authorAvatarUrl} name={post.author} size={18} />
           <span>{post.author}</span>
           <AuthorBadges {...badgesFor(post)} />
           {post.state && (

@@ -16,6 +16,8 @@ create table profiles (
   role text not null default 'member' check (role in ('member', 'verified_expert', 'admin')),
   expert_type text, -- set when role = 'verified_expert'; one of the EXPERT_TYPES labels
   state char(2), -- derived from zip client-side, never the raw zip (handoff §7)
+  email_notifications_enabled boolean not null default true, -- reply-to-your-post/comment emails
+  avatar_url text, -- public URL into the 'avatars' storage bucket; null falls back to initials in the UI
   created_at timestamptz not null default now()
 );
 
@@ -110,6 +112,30 @@ create table circle_memberships (
   primary key (circle_id, user_id)
 );
 create index circle_memberships_user_idx on circle_memberships(user_id);
+
+-- target_id is deliberately not FK'd (target_type says which table it points
+-- into) — a polymorphic reference, same tradeoff as topic_id on posts.
+create table reports (
+  id uuid primary key default gen_random_uuid(),
+  reporter_id uuid not null references profiles(id) on delete cascade,
+  target_type text not null check (target_type in ('post', 'comment')),
+  target_id uuid not null,
+  reason text not null,
+  status text not null default 'pending' check (status in ('pending', 'reviewed', 'dismissed')),
+  created_at timestamptz not null default now(),
+  reviewed_by uuid references profiles(id) on delete set null,
+  reviewed_at timestamptz
+);
+create index reports_status_idx on reports(status);
+
+create table blocks (
+  blocker_id uuid not null references profiles(id) on delete cascade,
+  blocked_id uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (blocker_id, blocked_id),
+  check (blocker_id <> blocked_id)
+);
+create index blocks_blocker_id_idx on blocks(blocker_id);
 
 -- on delete set null, not cascade — deleting a circle shouldn't delete the
 -- posts made in it, just detach them (they keep showing up in the main
@@ -245,6 +271,8 @@ alter table post_views enable row level security;
 alter table expert_applications enable row level security;
 alter table circles enable row level security;
 alter table circle_memberships enable row level security;
+alter table reports enable row level security;
+alter table blocks enable row level security;
 
 create policy "profiles are publicly readable" on profiles for select using (true);
 create policy "users update their own profile" on profiles for update using (auth.uid() = id);
@@ -252,7 +280,12 @@ create policy admin_update_any_profile on profiles for update using (
   exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
 );
 
-create policy "posts are publicly readable" on posts for select using (true);
+-- Not a plain "using (true)" anymore — a row is hidden from a viewer who has
+-- blocked its author. For a logged-out viewer (auth.uid() is null) the
+-- exists() subquery can never match, so nothing changes for anon browsing.
+create policy "posts are publicly readable" on posts for select using (
+  not exists (select 1 from public.blocks b where b.blocker_id = auth.uid() and b.blocked_id = posts.author_id)
+);
 -- Posting into a circle additionally requires membership in that circle —
 -- enforced here (not just in the API route) since posts are insertable
 -- directly at /rest/v1/posts under the anon key.
@@ -264,7 +297,9 @@ create policy "authenticated users create posts as themselves" on posts for inse
   )
 );
 
-create policy "comments are publicly readable" on comments for select using (true);
+create policy "comments are publicly readable" on comments for select using (
+  not exists (select 1 from public.blocks b where b.blocker_id = auth.uid() and b.blocked_id = comments.author_id)
+);
 create policy "authenticated users create comments as themselves" on comments for insert with check (auth.uid() = author_id);
 
 create policy "circles are publicly readable" on circles for select using (true);
@@ -287,6 +322,20 @@ create policy admin_read_all_applications on expert_applications for select usin
 create policy admin_update_applications on expert_applications for update using (
   exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
 );
+
+create policy "users submit reports as themselves" on reports for insert with check (auth.uid() = reporter_id);
+create policy "users read their own reports" on reports for select using (auth.uid() = reporter_id);
+create policy admin_read_all_reports on reports for select using (
+  exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+);
+create policy admin_update_reports on reports for update using (
+  exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+);
+
+-- "for all" covers select/insert/update/delete with the same predicate —
+-- users only ever see and manage blocks where they're the blocker.
+create policy "users manage their own blocks" on blocks for all
+  using (auth.uid() = blocker_id) with check (auth.uid() = blocker_id);
 
 -- ---------------------------------------------------------------------
 -- Storage — real credential file uploads for expert_applications.file_path
@@ -320,4 +369,40 @@ on storage.objects for select
 using (
   bucket_id = 'expert-credentials'
   and exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+);
+
+-- ---------------------------------------------------------------------
+-- Storage — profile picture uploads (profiles.avatar_url). Public bucket,
+-- unlike expert-credentials — an avatar is meant to be visible to anyone
+-- viewing a post/comment, not gated behind auth. Same own-uid-folder
+-- write pattern as the credentials bucket, just with public read instead
+-- of self-and-admin-only read.
+-- ---------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+create policy "avatar images are publicly accessible"
+on storage.objects for select
+using (bucket_id = 'avatars');
+
+create policy "users upload their own avatar"
+on storage.objects for insert
+with check (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+create policy "users update their own avatar"
+on storage.objects for update
+using (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+create policy "users delete their own avatar"
+on storage.objects for delete
+using (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
 );

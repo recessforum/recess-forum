@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, LogOut, Plus, Shield, Users } from "lucide-react";
+import { BadgeCheck, LogOut, Plus, Settings, Shield, Users } from "lucide-react";
 import { RecessMark } from "./RecessMark";
 import { NewPostModal } from "./NewPostModal";
 import { ExpertApplicationModal } from "./ExpertApplicationModal";
+import { Avatar } from "./Avatar";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import type { Promo } from "@/lib/types";
@@ -72,7 +73,13 @@ export function Header() {
                 className="flex items-center gap-1.5 px-3.5 py-2 bg-[#26364A] text-white text-[13px] font-medium hover:bg-[#1e2c3d] transition-colors">
                 <Plus size={15} /> New post
               </button>
-              <span className="hidden sm:inline text-[13px] text-[#5B584F] ml-1">{profile.display_name}</span>
+              <Link href="/settings" className="hidden sm:flex items-center gap-1.5 ml-1 text-[13px] text-[#5B584F] hover:text-[#1C1B19] transition-colors">
+                <Avatar url={profile.avatar_url} name={profile.display_name} size={22} />
+                {profile.display_name}
+              </Link>
+              <Link href="/settings" title="Settings" className="p-2 text-[#9A968A] hover:text-[#1C1B19] transition-colors sm:hidden">
+                <Settings size={16} />
+              </Link>
               <button onClick={logout} title="Log out" className="p-2 text-[#9A968A] hover:text-[#1C1B19] transition-colors">
                 <LogOut size={16} />
               </button>

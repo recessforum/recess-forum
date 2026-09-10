@@ -13,6 +13,7 @@ export interface Post {
   authorId: string;
   authorRole: ProfileRole;
   authorExpertType: string | null;
+  authorAvatarUrl: string | null;
   topicId: string;
   state: string | null;
   promo: Promo | null;
@@ -41,9 +42,33 @@ export interface Comment {
   authorId: string;
   authorRole: ProfileRole;
   authorExpertType: string | null;
+  authorAvatarUrl: string | null;
   body: string;
   score: number;
   createdAt: number;
+}
+
+export type ReportTargetType = "post" | "comment";
+export type ReportStatus = "pending" | "reviewed" | "dismissed";
+
+export interface Report {
+  id: string;
+  reporterId: string;
+  reporterName: string;
+  targetType: ReportTargetType;
+  targetId: string;
+  reason: string;
+  status: ReportStatus;
+  createdAt: number;
+  reviewedBy: string | null;
+  reviewedAt: number | null;
+}
+
+export interface BlockedUser {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  blockedAt: number;
 }
 
 export type ExpertApplicationStatus = "pending" | "approved" | "rejected";

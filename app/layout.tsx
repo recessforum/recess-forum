@@ -20,7 +20,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("id, display_name, role, expert_type")
+      .select("id, display_name, role, expert_type, avatar_url")
       .eq("id", user.id)
       .single();
     if (data) initialProfile = { ...data, email: user.email ?? null };

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Circle, Comment, ExpertApplication, Post, Promo, ProfileRole } from "./types";
+import type { BlockedUser, Circle, Comment, ExpertApplication, Post, Promo, ProfileRole, Report, ReportTargetType } from "./types";
 
 /**
  * Real Supabase-backed persistence (handoff §10 item 2 — replaces the
@@ -18,6 +18,7 @@ interface ProfileEmbed {
   display_name: string;
   role: ProfileRole;
   expert_type: string | null;
+  avatar_url: string | null;
 }
 
 interface CircleEmbed {
@@ -56,9 +57,9 @@ interface CommentRow {
 // second, indirect path to profiles (through post_views / votes), so a bare
 // `profiles(...)` embed is rejected by PostgREST as ambiguous (PGRST201).
 const POST_SELECT =
-  "id, author_id, title, body, topic_id, state, promo_label, promo_url, score, views, created_at, circle_id, circles!posts_circle_id_fkey(name), profiles!posts_author_id_fkey(display_name, role, expert_type)";
+  "id, author_id, title, body, topic_id, state, promo_label, promo_url, score, views, created_at, circle_id, circles!posts_circle_id_fkey(name), profiles!posts_author_id_fkey(display_name, role, expert_type, avatar_url)";
 const COMMENT_SELECT =
-  "id, post_id, parent_id, author_id, body, score, created_at, profiles!comments_author_id_fkey(display_name, role, expert_type)";
+  "id, post_id, parent_id, author_id, body, score, created_at, profiles!comments_author_id_fkey(display_name, role, expert_type, avatar_url)";
 
 function embedProfile(p: PostRow["profiles"]): ProfileEmbed | null {
   return Array.isArray(p) ? p[0] ?? null : p;
@@ -75,6 +76,7 @@ function toPost(row: PostRow): Post {
     authorId: row.author_id,
     authorRole: profile?.role ?? "member",
     authorExpertType: profile?.expert_type ?? null,
+    authorAvatarUrl: profile?.avatar_url ?? null,
     topicId: row.topic_id,
     state: row.state,
     promo: row.promo_label ? { label: row.promo_label, url: row.promo_url } : null,
@@ -96,6 +98,7 @@ function toComment(row: CommentRow): Comment {
     authorId: row.author_id,
     authorRole: profile?.role ?? "member",
     authorExpertType: profile?.expert_type ?? null,
+    authorAvatarUrl: profile?.avatar_url ?? null,
     body: row.body,
     score: row.score,
     createdAt: new Date(row.created_at).getTime(),
@@ -387,4 +390,110 @@ export async function joinCircle(supabase: SupabaseClient, circleId: string, use
 export async function leaveCircle(supabase: SupabaseClient, circleId: string, userId: string): Promise<void> {
   const { error } = await supabase.from("circle_memberships").delete().eq("circle_id", circleId).eq("user_id", userId);
   if (error) throw error;
+}
+
+export async function updateAvatar(supabase: SupabaseClient, userId: string, avatarUrl: string | null): Promise<void> {
+  const { error } = await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", userId);
+  if (error) throw error;
+}
+
+export async function createReport(
+  supabase: SupabaseClient,
+  input: { targetType: ReportTargetType; targetId: string; reason: string },
+  reporterId: string
+): Promise<void> {
+  const { error } = await supabase.from("reports").insert({
+    reporter_id: reporterId,
+    target_type: input.targetType,
+    target_id: input.targetId,
+    reason: input.reason,
+  });
+  if (error) throw error;
+}
+
+interface ReportRow {
+  id: string;
+  reporter_id: string;
+  target_type: ReportTargetType;
+  target_id: string;
+  reason: string;
+  status: Report["status"];
+  created_at: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  profiles: { display_name: string } | { display_name: string }[] | null;
+}
+
+export async function getReports(supabase: SupabaseClient): Promise<Report[]> {
+  const { data, error } = await supabase
+    .from("reports")
+    .select(
+      "id, reporter_id, target_type, target_id, reason, status, created_at, reviewed_by, reviewed_at, profiles!reports_reporter_id_fkey(display_name)"
+    )
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return ((data as unknown as ReportRow[]) || []).map((row) => {
+    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+    return {
+      id: row.id,
+      reporterId: row.reporter_id,
+      reporterName: profile?.display_name ?? "deleted",
+      targetType: row.target_type,
+      targetId: row.target_id,
+      reason: row.reason,
+      status: row.status,
+      createdAt: new Date(row.created_at).getTime(),
+      reviewedBy: row.reviewed_by,
+      reviewedAt: row.reviewed_at ? new Date(row.reviewed_at).getTime() : null,
+    };
+  });
+}
+
+export async function resolveReport(
+  supabase: SupabaseClient,
+  reportId: string,
+  status: "reviewed" | "dismissed",
+  reviewerId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("reports")
+    .update({ status, reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })
+    .eq("id", reportId);
+  if (error) throw error;
+}
+
+export async function blockUser(supabase: SupabaseClient, blockerId: string, blockedId: string): Promise<void> {
+  const { error } = await supabase.from("blocks").upsert({ blocker_id: blockerId, blocked_id: blockedId });
+  if (error) throw error;
+}
+
+export async function unblockUser(supabase: SupabaseClient, blockerId: string, blockedId: string): Promise<void> {
+  const { error } = await supabase.from("blocks").delete().eq("blocker_id", blockerId).eq("blocked_id", blockedId);
+  if (error) throw error;
+}
+
+interface BlockRow {
+  blocked_id: string;
+  created_at: string;
+  profiles: { display_name: string; avatar_url: string | null } | { display_name: string; avatar_url: string | null }[] | null;
+}
+
+export async function getMyBlockedUsers(supabase: SupabaseClient, blockerId: string): Promise<BlockedUser[]> {
+  const { data, error } = await supabase
+    .from("blocks")
+    .select("blocked_id, created_at, profiles!blocks_blocked_id_fkey(display_name, avatar_url)")
+    .eq("blocker_id", blockerId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return ((data as unknown as BlockRow[]) || []).map((row) => {
+    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+    return {
+      id: row.blocked_id,
+      displayName: profile?.display_name ?? "deleted",
+      avatarUrl: profile?.avatar_url ?? null,
+      blockedAt: new Date(row.created_at).getTime(),
+    };
+  });
 }

@@ -7,6 +7,8 @@ import type { Comment, Role, Tier } from "@/lib/types";
 import { timeAgo } from "@/lib/ranking";
 import { VoteControl } from "./VoteControl";
 import { AuthorBadges } from "./Badges";
+import { Avatar } from "./Avatar";
+import { AuthorMenu } from "./AuthorMenu";
 import { useAuth } from "@/lib/auth-context";
 
 type TierWithIcon = (Tier & { icon: "crown" | "star" | "sprout" | "rocket"; text: string; bg: string }) | null;
@@ -19,6 +21,7 @@ export function CommentNode({
   onVote,
   onReply,
   badgesFor,
+  onBlocked,
 }: {
   comment: Comment;
   depth: number;
@@ -27,6 +30,7 @@ export function CommentNode({
   onVote: (id: string, dir: 1 | -1) => void;
   onReply: (postId: string, parentId: string | null, input: { body: string }) => Promise<void>;
   badgesFor: (comment: Comment) => { tier: TierWithIcon; role: Role | null };
+  onBlocked?: () => void;
 }) {
   const router = useRouter();
   const { profile } = useAuth();
@@ -55,9 +59,11 @@ export function CommentNode({
     <div style={{ marginLeft: cappedDepth ? 20 : 0 }} className={cappedDepth ? "pl-4 border-l border-[#E6E3DA]" : ""}>
       <div className="mb-2">
         <div className="flex items-center gap-2 text-[13px] mb-0.5">
+          <Avatar url={comment.authorAvatarUrl} name={comment.author} size={18} />
           <span className="font-semibold text-[#1C1B19]">{comment.author}</span>
           <AuthorBadges {...badgesFor(comment)} />
           <span className="text-[12px] text-[#9A968A]">{timeAgo(comment.createdAt)}</span>
+          <AuthorMenu targetType="comment" targetId={comment.id} authorId={comment.authorId} authorName={comment.author} onBlocked={onBlocked} />
         </div>
         <p className="text-[14px] text-[#3A382F] leading-relaxed mb-1.5">{comment.body}</p>
         <div className="flex items-center gap-4">
@@ -80,7 +86,7 @@ export function CommentNode({
         )}
       </div>
       {children.map((child) => (
-        <CommentNode key={child.id} comment={child} depth={depth + 1} allComments={allComments} voteDirs={voteDirs} onVote={onVote} onReply={onReply} badgesFor={badgesFor} />
+        <CommentNode key={child.id} comment={child} depth={depth + 1} allComments={allComments} voteDirs={voteDirs} onVote={onVote} onReply={onReply} badgesFor={badgesFor} onBlocked={onBlocked} />
       ))}
     </div>
   );

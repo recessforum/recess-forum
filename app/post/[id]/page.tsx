@@ -11,6 +11,8 @@ import { TopicBadge } from "@/components/TopicBadge";
 import { CircleBadge } from "@/components/CircleBadge";
 import { VoteControl } from "@/components/VoteControl";
 import { AuthorBadges } from "@/components/Badges";
+import { Avatar } from "@/components/Avatar";
+import { AuthorMenu } from "@/components/AuthorMenu";
 import { CommentNode } from "@/components/CommentNode";
 import { useAuth } from "@/lib/auth-context";
 
@@ -145,6 +147,7 @@ export default function PostDetailPage() {
       </div>
       <h1 className="text-[24px] font-semibold leading-tight text-[#1C1B19] mb-2">{post.title}</h1>
       <div className="text-[13px] text-[#9A968A] mb-4 flex items-center gap-1.5 flex-wrap">
+        <Avatar url={post.authorAvatarUrl} name={post.author} size={20} />
         <span>{post.author}</span>
         <AuthorBadges {...badgesFor(post)} />
         <span className="text-[#26364A] font-medium">· {karma(post.authorId)} karma</span>
@@ -153,6 +156,8 @@ export default function PostDetailPage() {
         )}
         <span>· {timeAgo(post.createdAt)} ago</span>
         <span className="flex items-center gap-0.5">· <Eye size={12} className="ml-1" /> {post.views || 0} views</span>
+        <AuthorMenu targetType="post" targetId={post.id} authorId={post.authorId} authorName={post.author}
+          onBlocked={() => router.push("/")} />
       </div>
       <p className="text-[15px] text-[#3A382F] leading-relaxed mb-4 whitespace-pre-wrap">{post.body}</p>
       {post.promo && (
@@ -184,7 +189,8 @@ export default function PostDetailPage() {
 
       <div className="flex flex-col gap-4 mb-8">
         {topLevel.map((c) => (
-          <CommentNode key={c.id} comment={c} depth={0} allComments={comments} voteDirs={commentVoteDirs} onVote={handleVoteComment} onReply={handleAddComment} badgesFor={badgesFor} />
+          <CommentNode key={c.id} comment={c} depth={0} allComments={comments} voteDirs={commentVoteDirs} onVote={handleVoteComment} onReply={handleAddComment} badgesFor={badgesFor}
+            onBlocked={() => window.location.reload()} />
         ))}
         {comments.length === 0 && <p className="text-[14px] text-[#9A968A] italic">No replies yet — be the first to weigh in.</p>}
       </div>
