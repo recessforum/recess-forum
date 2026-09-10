@@ -455,6 +455,29 @@ the ownership check for real — direct `PATCH`/`DELETE` calls against
 another real user's post both correctly returned 403 rather than silently
 no-op'ing or succeeding.
 
+## Profile tabs (posts/replies) and change-nickname (done)
+
+Two small additions to things already built this session:
+
+- **Profile page has Posts/Replies tabs** (`/u/[id]`) — the post/reply
+  counts in the stats row are now clickable tabs instead of static text.
+  Replies is a flat, newest-first list of the person's comments (comments
+  don't have their own detail page, so each row links to `/post/[id]` and
+  shows which post it's replying to, using `allPosts` from the same
+  bootstrap payload already fetched for the page — no new endpoint).
+- **Change your nickname any time**, not just at `/welcome` — a Nickname
+  field on `/settings` reusing the same `POST /api/profile/nickname` built
+  for the first-sign-in prompt. Renaming is retroactive for free: author
+  name is joined from `profiles` at read time rather than stored on each
+  post/comment, so an existing reply immediately shows the new name with
+  no migration needed.
+
+Verified with a disposable test account: replied to a real post, opened
+its own `/u/[id]`, confirmed "0 posts · 1 reply" and that clicking the
+reply tab showed the comment linking back to the right post; changed its
+nickname in Settings and confirmed the header updated immediately and the
+already-posted reply displayed the new name on reload.
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final
@@ -494,11 +517,13 @@ were ported faithfully.
    above).
 10. ~~Post edit/delete, optional post body, thumbs vote icons~~ — **done**
     (see above).
-11. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
+11. ~~Profile tabs (posts/replies) and change-nickname~~ — **done** (see
+    above).
+12. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
     (school/IEP/discipline topics where a wrong answer causes real harm)
     and the risk of undercutting real-parent replies before the community
     has any critical mass outweigh the payoff right now; revisit once
     there's an established base of human answers, possibly scoped to
     "AI answers only when no human has yet."
-12. Everything else (a moderation action tied to a report — e.g. deleting
+13. Everything else (a moderation action tied to a report — e.g. deleting
     the reported content directly from `/admin`) — not designed yet.

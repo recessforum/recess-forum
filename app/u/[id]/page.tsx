@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Loader2, MessageSquare } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -22,6 +23,7 @@ export default function ProfilePage() {
   const [postVoteDirs, setPostVoteDirs] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [tab, setTab] = useState<"posts" | "replies">("posts");
 
   useEffect(() => {
     (async () => {
@@ -81,6 +83,10 @@ export default function ProfilePage() {
   const tier = tierFor(profile.id, allPosts, allComments);
   const role = roleFor(profile.role, profile.expertType);
   const posts = allPosts.filter((p) => p.authorId === profile.id).sort((a, b) => b.createdAt - a.createdAt);
+  const replies = Object.values(allComments).flat()
+    .filter((c) => c.authorId === profile.id)
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const postById = new Map(allPosts.map((p) => [p.id, p]));
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 w-full">
@@ -98,23 +104,50 @@ export default function ProfilePage() {
           <div className="flex items-center gap-3 text-[13px] text-[#9A968A]">
             <span className="text-[#26364A] font-medium">{karma} karma</span>
             <span>·</span>
-            <span>{postCount} {postCount === 1 ? "post" : "posts"}</span>
+            <button onClick={() => setTab("posts")}
+              className={`font-medium ${tab === "posts" ? "text-[#26364A] underline" : "hover:text-[#26364A]"}`}>
+              {postCount} {postCount === 1 ? "post" : "posts"}
+            </button>
             <span>·</span>
-            <span className="flex items-center gap-1"><MessageSquare size={12} /> {commentCount}</span>
+            <button onClick={() => setTab("replies")}
+              className={`flex items-center gap-1 font-medium ${tab === "replies" ? "text-[#26364A] underline" : "hover:text-[#26364A]"}`}>
+              <MessageSquare size={12} /> {commentCount} {commentCount === 1 ? "reply" : "replies"}
+            </button>
             <span>·</span>
             <span>joined {timeAgo(profile.createdAt)} ago</span>
           </div>
         </div>
       </div>
 
-      <h2 className="text-[15px] font-semibold text-[#1C1B19] mb-3">Posts</h2>
-      {posts.length === 0 ? (
-        <p className="text-[14px] text-[#9A968A] italic">No posts yet.</p>
+      {tab === "posts" ? (
+        posts.length === 0 ? (
+          <p className="text-[14px] text-[#9A968A] italic">No posts yet.</p>
+        ) : (
+          posts.map((p) => (
+            <PostRow key={p.id} post={p} commentCount={(allComments[p.id] || []).length}
+              onVote={handleVotePost} dir={postVoteDirs[p.id] || 0} onTopic={() => router.push("/")} badgesFor={badgesFor} />
+          ))
+        )
       ) : (
-        posts.map((p) => (
-          <PostRow key={p.id} post={p} commentCount={(allComments[p.id] || []).length}
-            onVote={handleVotePost} dir={postVoteDirs[p.id] || 0} onTopic={() => router.push("/")} badgesFor={badgesFor} />
-        ))
+        replies.length === 0 ? (
+          <p className="text-[14px] text-[#9A968A] italic">No replies yet.</p>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {replies.map((c) => {
+              const post = postById.get(c.postId);
+              return (
+                <Link key={c.id} href={`/post/${c.postId}`}
+                  className="block py-3 border-b border-[#E6E3DA] group">
+                  <p className="text-[12px] text-[#9A968A] mb-1">
+                    replying to <span className="text-[#5B584F] font-medium group-hover:text-[#26364A]">{post?.title ?? "a post"}</span>
+                  </p>
+                  <p className="text-[14px] text-[#3A382F] leading-relaxed line-clamp-2 mb-1">{c.body}</p>
+                  <p className="text-[12px] text-[#9A968A]">{c.score} points · {timeAgo(c.createdAt)} ago</p>
+                </Link>
+              );
+            })}
+          </div>
+        )
       )}
     </div>
   );

@@ -18,6 +18,9 @@ export default function SettingsPage() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<BlockedUser[] | null>(null);
   const [unblockingId, setUnblockingId] = useState<string | null>(null);
+  const [nickname, setNickname] = useState(profile?.display_name ?? "");
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
+  const [nicknameSaving, setNicknameSaving] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -25,6 +28,25 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((d) => setBlocked(d.blocked || []));
   }, [profile]);
+
+  useEffect(() => {
+    if (profile) setNickname(profile.display_name);
+  }, [profile?.display_name]);
+
+  const saveNickname = async () => {
+    if (!nickname.trim() || nickname.trim() === profile?.display_name) return;
+    setNicknameSaving(true);
+    setNicknameError(null);
+    const res = await fetch("/api/profile/nickname", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName: nickname.trim() }),
+    });
+    const data = await res.json();
+    setNicknameSaving(false);
+    if (!res.ok) { setNicknameError(data.error || "Something went wrong. Please try again."); return; }
+    await refreshProfile();
+  };
 
   const handleUpload = async (file: File | undefined) => {
     if (!file || !profile) return;
@@ -86,6 +108,21 @@ export default function SettingsPage() {
   return (
     <div className="max-w-lg mx-auto px-6 py-10 w-full">
       <h1 className="text-[22px] font-semibold text-[#1C1B19] mb-6">Settings</h1>
+
+      <section className="mb-10">
+        <h2 className="text-[13px] font-semibold text-[#5B584F] uppercase tracking-wide mb-3">Nickname</h2>
+        <div className="flex items-center gap-2">
+          <input value={nickname} onChange={(e) => setNickname(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && saveNickname()}
+            className="w-full max-w-xs px-3 py-2 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A]" />
+          <button disabled={!nickname.trim() || nickname.trim() === profile.display_name || nicknameSaving} onClick={saveNickname}
+            className="px-3 py-2 text-[13px] font-semibold bg-[#26364A] text-white disabled:opacity-40 flex items-center gap-2 hover:bg-[#1e2c3d] transition-colors">
+            {nicknameSaving && <Loader2 size={14} className="animate-spin" />} Save
+          </button>
+        </div>
+        <p className="text-[11px] text-[#9A968A] mt-1.5">This is what other parents see on your posts and replies — changing it updates everywhere immediately.</p>
+        {nicknameError && <p className="text-[12px] text-[#B23B3B] mt-1.5">{nicknameError}</p>}
+      </section>
 
       <section className="mb-10">
         <h2 className="text-[13px] font-semibold text-[#5B584F] uppercase tracking-wide mb-3">Profile picture</h2>
