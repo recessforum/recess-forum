@@ -330,6 +330,36 @@ expected `{uid}/{timestamp}.ext` path, confirmed the URL is publicly
 fetchable, and confirmed it renders both on the post detail page and as a
 feed thumbnail. Test account and data deleted afterward.
 
+## Violent-content filter (done, needs `OPENAI_API_KEY`)
+
+Posts and comments are checked against OpenAI's Moderation API
+(`lib/moderation.ts`, `omni-moderation-latest`, a raw `fetch` — no new npm
+dependency, same pattern as `lib/email.ts`) before they're inserted. Only
+the `violence` and `violence/graphic` categories are checked, deliberately
+narrower than the API's full `flagged` verdict — this is a parenting forum
+where people need to be able to describe bullying, school-violence
+concerns, or self-harm resources without getting blocked. A flagged
+submission is rejected with a 422 and a message suggesting a rephrase; the
+title+body are checked together for posts, the body alone for comments.
+Both `NewPostModal` and the comment/reply UIs (`CommentNode`, post detail
+page) surface that message inline instead of silently closing.
+
+Fails open: if `OPENAI_API_KEY` is missing or the API call errors, the
+content is allowed through rather than blocking all posting on a
+third-party outage. **The key needs to be added to `.env.local` locally
+and to Vercel's environment variables before this actually filters
+anything** — until then every submission passes through unchecked.
+
+Verified end-to-end against the real OpenAI API (after adding billing to
+the OpenAI org — new accounts get throttled to 429 on every request,
+including the free Moderation endpoint, until a payment method is on
+file): "우리 애 학교에서 괴롭힘당해서 걱정되어요" (legitimate bullying
+concern) → allowed; "죽여버릴거야" (explicit violent threat) → blocked,
+matching the two examples approved when this feature was scoped. The
+reject/allow branching and the UI error surfacing were separately
+exercised with a temporary stub before the key existed (reverted before
+commit); `tsc`/`next build` both pass.
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final
@@ -361,6 +391,8 @@ were ported faithfully.
    (see above). Topic-interest digest emails are still open — need a
    "follow a topic" feature first, which doesn't exist yet.
 6. ~~Photo uploads on posts~~ — **done** (see above).
-7. Everything else (a moderation action tied to a report — e.g. deleting
-   the reported content directly from `/admin` — AI-assisted Q&A, a content
-   filter, a public author profile page) — not designed yet.
+7. ~~Violent-content filter~~ — **done** and live in production, verified
+   against the real API (see above).
+8. Everything else (a moderation action tied to a report — e.g. deleting
+   the reported content directly from `/admin` — AI-assisted Q&A, a public
+   author profile page) — not designed yet.

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPost, isCircleMember } from "@/lib/db";
+import { containsViolentContent } from "@/lib/moderation";
 import { createClient } from "@/lib/supabase/server";
 import type { Promo } from "@/lib/types";
 
@@ -26,6 +27,13 @@ export async function POST(req: NextRequest) {
   const circleId = data.circleId || null;
   if (circleId && !(await isCircleMember(supabase, circleId, user.id))) {
     return NextResponse.json({ error: "join the circle before posting in it" }, { status: 403 });
+  }
+
+  if (await containsViolentContent(`${data.title}\n\n${data.body}`)) {
+    return NextResponse.json(
+      { error: "This post appears to contain violent content and can't be published. If you're describing a safety concern (e.g. bullying), try rephrasing without graphic or threatening language." },
+      { status: 422 }
+    );
   }
 
   const post = await createPost(

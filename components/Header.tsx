@@ -25,8 +25,9 @@ export function Header() {
       body: JSON.stringify(input),
     });
     const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Something went wrong. Please try again.");
     setShowNewPost(false);
-    if (data.post) router.push(`/post/${data.post.id}`);
+    router.push(`/post/${data.post.id}`);
   };
 
   const handleExpertApplication = async (input: { expertType: string; credentialInfo: string; filePath: string | null }) => {

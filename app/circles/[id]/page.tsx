@@ -74,8 +74,9 @@ export default function CircleDetailPage() {
       body: JSON.stringify(input),
     });
     const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Something went wrong. Please try again.");
     setShowNewPost(false);
-    if (data.post) router.push(`/post/${data.post.id}`);
+    router.push(`/post/${data.post.id}`);
   };
 
   const badgesFor = useCallback(

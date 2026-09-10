@@ -35,6 +35,7 @@ export function NewPostModal({
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const canSubmit = title.trim() && body.trim() && state && !saving;
   const inputClass = "w-full px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A] transition-colors";
@@ -162,12 +163,14 @@ export function NewPostModal({
             </div>
           )}
         </div>
-        <div className="px-6 py-4 border-t border-[#E6E3DA] flex justify-end gap-2">
+        <div className="px-6 py-4 border-t border-[#E6E3DA] flex items-center justify-end gap-2">
+          {submitError && <p className="text-[12px] text-[#B23B3B] mr-auto">{submitError}</p>}
           <button onClick={onClose} className="px-4 py-2 text-[14px] font-medium text-[#5B584F] hover:text-[#1C1B19]">Cancel</button>
           <button disabled={!canSubmit}
             onClick={async () => {
               if (!profile) return;
               setSaving(true);
+              setSubmitError(null);
 
               let imageUrl: string | null = null;
               if (image) {
@@ -184,7 +187,11 @@ export function NewPostModal({
               }
 
               const promo = isVerifiedExpert && promoLabel.trim() ? { label: promoLabel.trim(), url: promoUrl.trim() || null } : null;
-              await onSubmit({ title: title.trim(), body: body.trim(), topicId, state, promo, circleId, imageUrl });
+              try {
+                await onSubmit({ title: title.trim(), body: body.trim(), topicId, state, promo, circleId, imageUrl });
+              } catch (err) {
+                setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+              }
               setSaving(false);
             }}
             className="px-4 py-2 text-[14px] font-semibold bg-[#26364A] text-white disabled:opacity-40 flex items-center gap-2 hover:bg-[#1e2c3d] transition-colors">

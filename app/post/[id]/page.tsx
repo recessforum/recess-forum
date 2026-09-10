@@ -32,6 +32,7 @@ export default function PostDetailPage() {
   const [commentSort, setCommentSort] = useState<"best" | "new">("best");
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
   const viewedRef = useRef(false);
 
   useEffect(() => {
@@ -102,17 +103,21 @@ export default function PostDetailPage() {
       body: JSON.stringify({ parentId, ...input }),
     });
     const data = await res.json();
-    if (data.comment) {
-      setComments((cs) => [...cs, data.comment]);
-      setCommentVoteDirs((s) => ({ ...s, [data.comment.id]: 1 }));
-    }
+    if (!res.ok) throw new Error(data.error || "Something went wrong. Please try again.");
+    setComments((cs) => [...cs, data.comment]);
+    setCommentVoteDirs((s) => ({ ...s, [data.comment.id]: 1 }));
   };
 
   const submitTopLevel = async () => {
     if (!text.trim() || !post) return;
     setSending(true);
-    await handleAddComment(post.id, null, { body: text.trim() });
-    setText("");
+    setReplyError(null);
+    try {
+      await handleAddComment(post.id, null, { body: text.trim() });
+      setText("");
+    } catch (err) {
+      setReplyError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    }
     setSending(false);
   };
 
@@ -205,6 +210,7 @@ export default function PostDetailPage() {
             <p className="text-[12px] text-[#9A968A] mb-1.5">Replying as {profile.display_name}</p>
             <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder="Add your reply..."
               className="w-full mb-2 px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A] resize-none" />
+            {replyError && <p className="text-[12px] text-[#B23B3B] mb-2">{replyError}</p>}
             <button disabled={!text.trim() || sending} onClick={submitTopLevel}
               className="px-4 py-2 text-[14px] font-semibold bg-[#26364A] text-white disabled:opacity-40 flex items-center gap-2 hover:bg-[#1e2c3d] transition-colors">
               {sending && <Loader2 size={14} className="animate-spin" />} Reply
