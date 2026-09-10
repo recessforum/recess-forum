@@ -34,6 +34,7 @@ interface PostRow {
   state: string | null;
   promo_label: string | null;
   promo_url: string | null;
+  image_url: string | null;
   score: number;
   views: number;
   created_at: string;
@@ -57,7 +58,7 @@ interface CommentRow {
 // second, indirect path to profiles (through post_views / votes), so a bare
 // `profiles(...)` embed is rejected by PostgREST as ambiguous (PGRST201).
 const POST_SELECT =
-  "id, author_id, title, body, topic_id, state, promo_label, promo_url, score, views, created_at, circle_id, circles!posts_circle_id_fkey(name), profiles!posts_author_id_fkey(display_name, role, expert_type, avatar_url)";
+  "id, author_id, title, body, topic_id, state, promo_label, promo_url, image_url, score, views, created_at, circle_id, circles!posts_circle_id_fkey(name), profiles!posts_author_id_fkey(display_name, role, expert_type, avatar_url)";
 const COMMENT_SELECT =
   "id, post_id, parent_id, author_id, body, score, created_at, profiles!comments_author_id_fkey(display_name, role, expert_type, avatar_url)";
 
@@ -80,6 +81,7 @@ function toPost(row: PostRow): Post {
     topicId: row.topic_id,
     state: row.state,
     promo: row.promo_label ? { label: row.promo_label, url: row.promo_url } : null,
+    imageUrl: row.image_url,
     score: row.score,
     views: row.views,
     createdAt: new Date(row.created_at).getTime(),
@@ -140,7 +142,7 @@ export async function getComments(supabase: SupabaseClient, postId: string): Pro
 
 export async function createPost(
   supabase: SupabaseClient,
-  input: { title: string; body: string; topicId: string; state: string | null; promo: Promo | null; circleId: string | null },
+  input: { title: string; body: string; topicId: string; state: string | null; promo: Promo | null; circleId: string | null; imageUrl: string | null },
   authorId: string
 ): Promise<Post> {
   const { data, error } = await supabase
@@ -153,6 +155,7 @@ export async function createPost(
       state: input.state,
       promo_label: input.promo?.label ?? null,
       promo_url: input.promo?.url ?? null,
+      image_url: input.imageUrl,
       circle_id: input.circleId,
       score: 1,
       views: 0,

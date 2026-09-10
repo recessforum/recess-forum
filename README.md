@@ -259,6 +259,12 @@ column directly for now. The trigger site is `notifyOnComment()`
 comment is inserted; it never throws — a failed send logs and moves on
 rather than failing the comment itself.
 
+`RESEND_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are now set in Vercel
+(Production and Preview). Verified against the live site after a redeploy:
+one real account commented on another's post, and the notification email
+actually arrived in the recipient's inbox — not just a 200 from the API.
+Test accounts and the test post deleted afterward.
+
 ## Profile pictures (done)
 
 `profiles.avatar_url` — set via a new public `avatars` Storage bucket
@@ -308,6 +314,22 @@ reason; blocked the post's author and confirmed the post disappeared from
 the feed, the post detail route started 404ing, and both reverted after
 unblocking. Test accounts and data deleted afterward.
 
+## Photo uploads on posts (done)
+
+One optional photo per post — `posts.image_url`, set via a third public
+Storage bucket, `post-images`, same own-uid-folder RLS pattern as
+`avatars`. Uploaded from `NewPostModal` at post-creation time (no
+edit-after-the-fact yet — a post's photo is set once, when it's created),
+with client-side validation (JPG/PNG/WEBP, 8MB max) and a local preview
+before upload. Shown as a thumbnail under the post body in the feed
+(`PostRow`) and full-width on the post detail page.
+
+Verified end-to-end: uploaded a real image through the actual `NewPostModal`
+UI (not just the API), confirmed the file landed in `post-images` at the
+expected `{uid}/{timestamp}.ext` path, confirmed the URL is publicly
+fetchable, and confirmed it renders both on the post detail page and as a
+feed thumbnail. Test account and data deleted afterward.
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final
@@ -338,7 +360,7 @@ were ported faithfully.
 5. ~~Reply email notifications, profile pictures, report, block~~ — **done**
    (see above). Topic-interest digest emails are still open — need a
    "follow a topic" feature first, which doesn't exist yet.
-6. Everything else (a moderation action tied to a report — e.g. deleting
-   the reported content directly from `/admin` — AI-assisted Q&A, photo
-   uploads on posts, a content filter, a public author profile page) — not
-   designed yet.
+6. ~~Photo uploads on posts~~ — **done** (see above).
+7. Everything else (a moderation action tied to a report — e.g. deleting
+   the reported content directly from `/admin` — AI-assisted Q&A, a content
+   filter, a public author profile page) — not designed yet.

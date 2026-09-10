@@ -160,6 +160,10 @@ export default function PostDetailPage() {
           onBlocked={() => router.push("/")} />
       </div>
       <p className="text-[15px] text-[#3A382F] leading-relaxed mb-4 whitespace-pre-wrap">{post.body}</p>
+      {post.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- user-uploaded post photo, arbitrary Supabase Storage object
+        <img src={post.imageUrl} alt="" className="w-full max-h-[480px] object-cover mb-4" />
+      )}
       {post.promo && (
         <div className="flex items-center gap-2 text-[13px] text-[#217A78] bg-[#E4F2F1] px-3 py-2 mb-4">
           <Briefcase size={14} className="shrink-0" />

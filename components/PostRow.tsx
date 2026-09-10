@@ -43,6 +43,10 @@ export function PostRow({
           {post.title}
         </h3>
         <p className="text-[14px] text-[#5B584F] leading-relaxed line-clamp-2 mb-1.5">{post.body}</p>
+        {post.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- user-uploaded post photos, arbitrary Supabase Storage objects
+          <img src={post.imageUrl} alt="" className="w-full max-h-64 object-cover mb-1.5" />
+        )}
         {post.promo && (
           <div className="flex items-center gap-1 text-[11px] text-[#217A78] mb-1.5">
             <Briefcase size={11} /> {post.promo.label}

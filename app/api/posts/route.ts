@@ -10,6 +10,7 @@ interface NewPostBody {
   state: string;
   promo: Promo | null;
   circleId?: string | null;
+  imageUrl?: string | null;
 }
 
 export async function POST(req: NextRequest) {
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
       state: data.state,
       promo: data.promo || null,
       circleId,
+      imageUrl: data.imageUrl || null,
     },
     user.id
   );

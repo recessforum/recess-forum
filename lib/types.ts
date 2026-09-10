@@ -17,6 +17,7 @@ export interface Post {
   topicId: string;
   state: string | null;
   promo: Promo | null;
+  imageUrl: string | null;
   score: number;
   views: number;
   createdAt: number;

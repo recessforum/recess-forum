@@ -30,6 +30,7 @@ create table posts (
   state char(2) not null,
   promo_label text, -- Verified Expert business-mention perk (handoff §6); null unless author is verified
   promo_url text,
+  image_url text, -- public URL into the 'post-images' bucket; one optional photo per post
   score integer not null default 0,
   views integer not null default 0,
   created_at timestamptz not null default now()
@@ -404,5 +405,32 @@ create policy "users delete their own avatar"
 on storage.objects for delete
 using (
   bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- ---------------------------------------------------------------------
+-- Storage — one optional photo per post (posts.image_url). Public bucket,
+-- same own-uid-folder RLS pattern as avatars — a post's photo is public
+-- content like the post itself, no admin-only read needed.
+-- ---------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('post-images', 'post-images', true)
+on conflict (id) do nothing;
+
+create policy "post images are publicly accessible"
+on storage.objects for select
+using (bucket_id = 'post-images');
+
+create policy "users upload their own post images"
+on storage.objects for insert
+with check (
+  bucket_id = 'post-images'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+create policy "users delete their own post images"
+on storage.objects for delete
+using (
+  bucket_id = 'post-images'
   and (storage.foldername(name))[1] = auth.uid()::text
 );

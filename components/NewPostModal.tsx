@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Briefcase, Loader2, Users, X } from "lucide-react";
+import { Briefcase, Loader2, Upload, Users, X } from "lucide-react";
 import { CATEGORIES } from "@/lib/taxonomy";
 import { US_STATES, zipToState } from "@/lib/location";
 import { useAuth } from "@/lib/auth-context";
+import { createClient } from "@/lib/supabase/client";
 import type { Promo } from "@/lib/types";
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB
+const ALLOWED_IMAGE_TYPES: Record<string, true> = { "image/jpeg": true, "image/png": true, "image/webp": true };
 
 export function NewPostModal({
   defaultTopic,
@@ -18,7 +22,7 @@ export function NewPostModal({
   circleId?: string | null;
   circleName?: string | null;
   onClose: () => void;
-  onSubmit: (input: { title: string; body: string; topicId: string; state: string; promo: Promo | null; circleId: string | null }) => Promise<void>;
+  onSubmit: (input: { title: string; body: string; topicId: string; state: string; promo: Promo | null; circleId: string | null; imageUrl: string | null }) => Promise<void>;
 }) {
   const { profile } = useAuth();
   const [title, setTitle] = useState("");
@@ -28,10 +32,35 @@ export function NewPostModal({
   const [topicId, setTopicId] = useState(defaultTopic || CATEGORIES[0].topics[0].id);
   const [promoLabel, setPromoLabel] = useState("");
   const [promoUrl, setPromoUrl] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const canSubmit = title.trim() && body.trim() && state && !saving;
   const inputClass = "w-full px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A] transition-colors";
   const isVerifiedExpert = profile?.role === "verified_expert";
+
+  const handleImageChange = (f: File | undefined) => {
+    if (!f) {
+      setImage(null);
+      setImagePreview(null);
+      setImageError(null);
+      return;
+    }
+    if (!ALLOWED_IMAGE_TYPES[f.type]) {
+      setImage(null);
+      setImageError("Only JPG, PNG, or WEBP images are accepted.");
+      return;
+    }
+    if (f.size > MAX_IMAGE_BYTES) {
+      setImage(null);
+      setImageError("Image is too large (8MB max).");
+      return;
+    }
+    setImage(f);
+    setImageError(null);
+    setImagePreview(URL.createObjectURL(f));
+  };
 
   const handleZipChange = (val: string) => {
     setZip(val);
@@ -88,6 +117,29 @@ export function NewPostModal({
             We only ever show your state, never your zip — typing a zip just auto-fills the state for you.
           </p>
           <div>
+            <label className="text-[12px] font-medium text-[#5B584F] block mb-1.5">
+              Photo <span className="text-[#9A968A] font-normal">(optional)</span>
+            </label>
+            {imagePreview ? (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview before upload */}
+                <img src={imagePreview} alt="Selected" className="w-full max-h-56 object-cover" />
+                <button onClick={() => handleImageChange(undefined)}
+                  className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-black/80">
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <label className="flex items-center gap-2 px-3 py-2.5 text-[13px] text-[#5B584F] cursor-pointer border border-dashed border-[#E6E3DA] bg-[#FAF9F7] hover:border-[#26364A] transition-colors">
+                <Upload size={15} />
+                Choose a photo
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                  onChange={(e) => handleImageChange(e.target.files?.[0])} />
+              </label>
+            )}
+            {imageError && <p className="text-[12px] text-[#B23B3B] mt-1.5">{imageError}</p>}
+          </div>
+          <div>
             <label className="text-[12px] font-medium text-[#5B584F] block mb-1.5">Topic</label>
             <select value={topicId} onChange={(e) => setTopicId(e.target.value)} className={inputClass}>
               {CATEGORIES.map((c) => (
@@ -114,9 +166,25 @@ export function NewPostModal({
           <button onClick={onClose} className="px-4 py-2 text-[14px] font-medium text-[#5B584F] hover:text-[#1C1B19]">Cancel</button>
           <button disabled={!canSubmit}
             onClick={async () => {
+              if (!profile) return;
               setSaving(true);
+
+              let imageUrl: string | null = null;
+              if (image) {
+                const supabase = createClient();
+                const ext = image.type === "image/png" ? "png" : image.type === "image/webp" ? "webp" : "jpg";
+                const path = `${profile.id}/${Date.now()}.${ext}`;
+                const { error: uploadError } = await supabase.storage.from("post-images").upload(path, image);
+                if (uploadError) {
+                  setImageError(uploadError.message);
+                  setSaving(false);
+                  return;
+                }
+                imageUrl = supabase.storage.from("post-images").getPublicUrl(path).data.publicUrl;
+              }
+
               const promo = isVerifiedExpert && promoLabel.trim() ? { label: promoLabel.trim(), url: promoUrl.trim() || null } : null;
-              await onSubmit({ title: title.trim(), body: body.trim(), topicId, state, promo, circleId });
+              await onSubmit({ title: title.trim(), body: body.trim(), topicId, state, promo, circleId, imageUrl });
               setSaving(false);
             }}
             className="px-4 py-2 text-[14px] font-semibold bg-[#26364A] text-white disabled:opacity-40 flex items-center gap-2 hover:bg-[#1e2c3d] transition-colors">
