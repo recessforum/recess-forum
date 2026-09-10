@@ -216,10 +216,14 @@ begin
     on conflict (voter_id, target_type, target_id) do update set dir = excluded.dir;
   end if;
 
+  -- `score` here is ambiguous between the table column and the RETURNS
+  -- TABLE(score, ...) output column, which plpgsql also treats as an
+  -- in-scope variable — Postgres refuses to guess and errors 42702 on
+  -- every call. Qualifying with the table alias is required, not stylistic.
   if p_target_type = 'post' then
-    update public.posts set score = score + v_delta where id = p_target_id returning posts.score into v_new_score;
+    update public.posts as p set score = p.score + v_delta where p.id = p_target_id returning p.score into v_new_score;
   else
-    update public.comments set score = score + v_delta where id = p_target_id returning comments.score into v_new_score;
+    update public.comments as c set score = c.score + v_delta where c.id = p_target_id returning c.score into v_new_score;
   end if;
 
   return query select v_new_score, v_new_dir;

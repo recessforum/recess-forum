@@ -478,6 +478,45 @@ reply tab showed the comment linking back to the right post; changed its
 nickname in Settings and confirmed the header updated immediately and the
 already-posted reply displayed the new name on reload.
 
+## Fixed: voting silently never worked (bug, not a feature)
+
+The user reported votes from several real accounts "disappearing." They
+hadn't — they never landed. `cast_vote()`'s `RETURNS TABLE(score integer,
+dir smallint)` makes `score` an in-scope plpgsql variable for the whole
+function body, which collided with the `posts`/`comments` table column of
+the same name inside `update ... set score = score + v_delta`. Postgres
+can't guess which `score` the right-hand side means and throws `42702
+column reference "score" is ambiguous` — on every single call,
+unconditionally. `lib/db.ts`'s `vote()` does `if (error) throw error`,
+`POST /api/vote` never catches it, and every `handleVotePost`/
+`handleVoteComment` call site fires the request without checking
+`res.ok` — so the UI's optimistic score bump was the *only* place a vote
+ever showed up. A real vote's INSERT into `votes` succeeded fine (that
+statement has no ambiguity), so the table has an accurate history; only
+the `posts.score`/`comments.score` counters were silently stuck at
+whatever `createPost`/`addComment` initialized them to.
+
+Fixed by qualifying the column with the table alias
+(`update public.posts as p set score = p.score + v_delta ...`), which
+resolves the ambiguity. Also backfilled every existing post/comment's
+`score` from `sum(votes.dir)` — the votes table was correct the whole
+time, just never read back into the counter.
+
+**This means the site has never had a working like/upvote counter in
+production**, from the day this table and function were written. Worth
+being deliberate next time a `RETURNS TABLE` column name is chosen — pick
+something that can't collide with a real column, or qualify defensively
+from the start, rather than relying on it happening not to be needed.
+
+Verified: reproduced the exact 42702 error live (disposable test account,
+direct `fetch('/api/vote', ...)`, read the dev server's stack trace) before
+touching anything, confirmed the theory instead of guessing. After the
+fix, re-ran the same call and got a real `{score, dir}` response; tested
+the full up→down→toggle-off cycle on both a post and a comment; then a
+project-wide query confirming zero remaining posts/comments where `score
+<> sum(votes.dir)`. Test account and its test votes cleaned up after
+(each toggled fully back off, leaving no residue in either table).
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final
