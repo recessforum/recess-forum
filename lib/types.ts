@@ -65,6 +65,15 @@ export interface Report {
   reviewedAt: number | null;
 }
 
+export interface PublicProfile {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: ProfileRole;
+  expertType: string | null;
+  createdAt: number;
+}
+
 export interface BlockedUser {
   id: string;
   displayName: string;

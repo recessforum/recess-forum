@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Eye, Loader2, MapPin } from "lucide-react";
 import { Briefcase } from "lucide-react";
@@ -152,8 +153,10 @@ export default function PostDetailPage() {
       </div>
       <h1 className="text-[24px] font-semibold leading-tight text-[#1C1B19] mb-2">{post.title}</h1>
       <div className="text-[13px] text-[#9A968A] mb-4 flex items-center gap-1.5 flex-wrap">
-        <Avatar url={post.authorAvatarUrl} name={post.author} size={20} />
-        <span>{post.author}</span>
+        <Link href={`/u/${post.authorId}`} className="flex items-center gap-1.5 hover:text-[#26364A]">
+          <Avatar url={post.authorAvatarUrl} name={post.author} size={20} />
+          <span>{post.author}</span>
+        </Link>
         <AuthorBadges {...badgesFor(post)} />
         <span className="text-[#26364A] font-medium">· {karma(post.authorId)} karma</span>
         {post.state && (

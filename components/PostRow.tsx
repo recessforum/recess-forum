@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, MapPin, MessageSquare } from "lucide-react";
 import type { Post, Role, Tier } from "@/lib/types";
@@ -53,8 +54,11 @@ export function PostRow({
           </div>
         )}
         <div className="flex items-center gap-2 text-[12px] text-[#9A968A]">
-          <Avatar url={post.authorAvatarUrl} name={post.author} size={18} />
-          <span>{post.author}</span>
+          <Link href={`/u/${post.authorId}`} onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-2 hover:text-[#26364A]">
+            <Avatar url={post.authorAvatarUrl} name={post.author} size={18} />
+            <span>{post.author}</span>
+          </Link>
           <AuthorBadges {...badgesFor(post)} />
           {post.state && (
             <span className="flex items-center gap-0.5">

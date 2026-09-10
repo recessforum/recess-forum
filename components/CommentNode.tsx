@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import type { Comment, Role, Tier } from "@/lib/types";
@@ -65,8 +66,10 @@ export function CommentNode({
     <div style={{ marginLeft: cappedDepth ? 20 : 0 }} className={cappedDepth ? "pl-4 border-l border-[#E6E3DA]" : ""}>
       <div className="mb-2">
         <div className="flex items-center gap-2 text-[13px] mb-0.5">
-          <Avatar url={comment.authorAvatarUrl} name={comment.author} size={18} />
-          <span className="font-semibold text-[#1C1B19]">{comment.author}</span>
+          <Link href={`/u/${comment.authorId}`} className="flex items-center gap-2 hover:text-[#26364A]">
+            <Avatar url={comment.authorAvatarUrl} name={comment.author} size={18} />
+            <span className="font-semibold text-[#1C1B19]">{comment.author}</span>
+          </Link>
           <AuthorBadges {...badgesFor(comment)} />
           <span className="text-[12px] text-[#9A968A]">{timeAgo(comment.createdAt)}</span>
           <AuthorMenu targetType="comment" targetId={comment.id} authorId={comment.authorId} authorName={comment.author} onBlocked={onBlocked} />

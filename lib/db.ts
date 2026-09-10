@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { BlockedUser, Circle, Comment, ExpertApplication, Post, Promo, ProfileRole, Report, ReportTargetType } from "./types";
+import type { BlockedUser, Circle, Comment, ExpertApplication, Post, Promo, ProfileRole, PublicProfile, Report, ReportTargetType } from "./types";
 
 /**
  * Real Supabase-backed persistence (handoff §10 item 2 — replaces the
@@ -398,6 +398,24 @@ export async function leaveCircle(supabase: SupabaseClient, circleId: string, us
 export async function updateAvatar(supabase: SupabaseClient, userId: string, avatarUrl: string | null): Promise<void> {
   const { error } = await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", userId);
   if (error) throw error;
+}
+
+export async function getProfile(supabase: SupabaseClient, id: string): Promise<PublicProfile | undefined> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, avatar_url, role, expert_type, created_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return undefined;
+  return {
+    id: data.id,
+    displayName: data.display_name,
+    avatarUrl: data.avatar_url,
+    role: data.role,
+    expertType: data.expert_type,
+    createdAt: new Date(data.created_at).getTime(),
+  };
 }
 
 export async function createReport(

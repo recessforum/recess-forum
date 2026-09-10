@@ -360,6 +360,31 @@ reject/allow branching and the UI error surfacing were separately
 exercised with a temporary stub before the key existed (reverted before
 commit); `tsc`/`next build` both pass.
 
+## Public author profile pages (done)
+
+Clicking an author's name/avatar anywhere (feed rows, post detail, comments)
+links to `/u/[id]` — a public page showing their avatar, display name,
+role/tier badges, karma, post + comment counts, join date, and a list of
+their posts. Tier and karma are computed the same way as everywhere else
+in the app: client-side from the full `/api/bootstrap` posts/comments
+payload (`lib/roles.ts`), not a new server-side calculation. The profile's
+identity fields (display name, avatar, role, join date) come from a new
+`getProfile()` in `lib/db.ts` / `GET /api/profiles/[id]`, since those
+should render even for a brand-new user with zero posts yet — deriving
+them only from bootstrap data would leave that case with nothing to show.
+
+Blocked authors behave the same way blocking already worked elsewhere:
+their posts/comments are filtered out by the existing RLS policies before
+they ever reach the client, so a blocked author's profile just shows 0
+posts rather than exposing hidden content.
+
+Verified end-to-end with a disposable Supabase-created test account: made
+a post, clicked the author name from the feed row (confirmed it opens the
+profile instead of falling through to the post-detail click handler) and
+from the post detail page, and confirmed the profile page showed the
+correct karma/post count/join time. Test account and its post deleted
+afterward.
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final
@@ -393,6 +418,12 @@ were ported faithfully.
 6. ~~Photo uploads on posts~~ — **done** (see above).
 7. ~~Violent-content filter~~ — **done** and live in production, verified
    against the real API (see above).
-8. Everything else (a moderation action tied to a report — e.g. deleting
-   the reported content directly from `/admin` — AI-assisted Q&A, a public
-   author profile page) — not designed yet.
+8. ~~Public author profile pages~~ — **done** (see above).
+9. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
+   (school/IEP/discipline topics where a wrong answer causes real harm)
+   and the risk of undercutting real-parent replies before the community
+   has any critical mass outweigh the payoff right now; revisit once
+   there's an established base of human answers, possibly scoped to
+   "AI answers only when no human has yet."
+10. Everything else (a moderation action tied to a report — e.g. deleting
+    the reported content directly from `/admin`) — not designed yet.
