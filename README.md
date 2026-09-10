@@ -119,15 +119,30 @@ user's real name/email on purpose), login, logout. Posting, commenting, and
 voting all require login and are attributed to the logged-in user's nickname
 — there's no more free-text "Your name" field anywhere.
 
-**Google sign-in is wired into the UI but disabled** (`(coming soon)` on both
-the login and signup pages) — it needs a Google Cloud OAuth client (Client ID
-+ Secret) that doesn't exist yet, same blocker FrameHonest's Google OAuth
-hit. To finish it: create a Google Cloud project → OAuth consent screen →
-OAuth Client ID (Web application) → set the authorized redirect URI to
-`https://uslgoqpikanwmujcoxes.supabase.co/auth/v1/callback` → paste the
-Client ID/Secret into Supabase Dashboard → Authentication → Sign In /
-Providers → Google → remove the `disabled` prop on the two "Continue with
-Google" buttons in `app/login/page.tsx` / `app/signup/page.tsx`.
+**Google sign-in (done)**: a Google Cloud project ("Recess Forum", under
+`recessforum@gmail.com` — same separate-account pattern as the rest of this
+project's infra) has an OAuth 2.0 Web client with authorized origins for
+`recessforum.com`, `www.recessforum.com`, `recess-forum.vercel.app`, and
+`localhost:3000`, and the redirect URI
+`https://uslgoqpikanwmujcoxes.supabase.co/auth/v1/callback`. The Client
+ID/Secret are entered into Supabase Dashboard → Authentication → Sign In /
+Providers → Google, and both "Continue with Google" buttons
+(`app/login/page.tsx` / `app/signup/page.tsx`) call
+`supabase.auth.signInWithOAuth({ provider: "google" })` — no separate
+callback handling was needed since `app/auth/callback/route.ts` already
+handled the OAuth code exchange (it was written anticipating this).
+
+The OAuth consent screen requested only the non-sensitive `email`,
+`profile`, and `openid` scopes, and is published **"In production"**
+(not just "Testing") so any Google account can sign in, not only
+pre-approved test users — this needed a public privacy policy URL, which
+didn't exist yet, so [`/privacy`](app/privacy/page.tsx) was added.
+
+Verified end-to-end against the live site: clicking "Continue with Google"
+on `recessforum.com/login` correctly redirects to Google's real sign-in
+screen referencing the Supabase project, confirming the OAuth wiring
+end-to-end (didn't complete a real sign-in with a personal account as part
+of this verification).
 
 **Known trigger gotcha, already fixed** — the `handle_new_user()` Postgres
 trigger that creates a `profiles` row on signup originally failed with
@@ -224,7 +239,7 @@ were ported faithfully.
 
 | Thing | Prototype (artifact) | This app | Real product needs |
 |---|---|---|---|
-| Auth | None — "Your name" is free text | **Real Supabase Auth** — email/password + confirmation, nickname, logout. Google button present but disabled (see above). | Finish Google OAuth (needs a Google Cloud project) |
+| Auth | None — "Your name" is free text | **Real Supabase Auth** — email/password + confirmation, nickname, logout, Google sign-in (see above). | — already real |
 | Data storage — posts/comments/votes/views | `window.storage` (artifact-only) | **Real Supabase tables**, via `lib/db.ts` and real API routes | — already real |
 | Data storage — expert applications | `window.storage` | **Real Supabase table** (`expert_applications`, RLS: `auth.uid() = applicant_id`) | Admin approval UI (see below) |
 | Votes / views dedup | Per-browser-session React state, lost on reload | **Real Postgres tables**, atomic via `cast_vote`/`increment_post_view` (anonymous visitors share one bucket for views; voting requires login) | — already real |
@@ -236,8 +251,7 @@ were ported faithfully.
 
 ## Next steps, in priority order
 
-1. ~~Auth~~ — **done**. Google OAuth specifically still needs a Google Cloud
-   project (see above).
+1. ~~Auth~~ — **done**, including Google sign-in (see above).
 2. ~~Database migration~~ — **done**. Posts/comments/votes/views are on
    real Supabase tables (see above).
 3. ~~Admin review flow~~ — **done**. `/admin` lists pending expert
