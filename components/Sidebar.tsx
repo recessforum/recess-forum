@@ -61,7 +61,7 @@ export function Sidebar({
   onSelectState: (state: string | null) => void;
   posts: Post[] | null;
 }) {
-  const [openCat, setOpenCat] = useState<Set<string>>(() => new Set(CATEGORIES.map((c) => c.id)));
+  const [openCat, setOpenCat] = useState<Set<string>>(() => new Set());
   const [editingState, setEditingState] = useState(false);
   const toggle = (id: string) => setOpenCat((s) => {
     const n = new Set(s);
