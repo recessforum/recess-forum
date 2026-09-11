@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Flame, Loader2, MapPin, Search, Trophy } from "lucide-react";
+import { Clock, Flame, Loader2, Search, Trophy } from "lucide-react";
 import { CATEGORIES, categoryOf, colorForCategory, topicById } from "@/lib/taxonomy";
 import { topicLabel } from "@/lib/taxonomy";
-import { US_STATES } from "@/lib/location";
 import { hotScore, rangeCutoff } from "@/lib/ranking";
 import { roleFor, tierFor } from "@/lib/roles";
 import type { Comment, Post } from "@/lib/types";
@@ -33,6 +32,17 @@ export default function HomePage() {
   const [selectedState, setSelectedState] = useState<string | null>(null);
 
   const [postVoteDirs, setPostVoteDirs] = useState<Record<string, number>>({});
+
+  // Persisted across visits — see Recess_Forum_Sidebar_Proposal_KO.docx §3 ("saved for next visit").
+  useEffect(() => {
+    const saved = localStorage.getItem("recess-forum:state");
+    if (saved) setSelectedState(saved);
+  }, []);
+  const handleSelectState = useCallback((state: string | null) => {
+    setSelectedState(state);
+    if (state) localStorage.setItem("recess-forum:state", state);
+    else localStorage.removeItem("recess-forum:state");
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -101,7 +111,8 @@ export default function HomePage() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 flex gap-10 w-full">
-      <Sidebar selectedTopic={selectedTopic} onSelectTopic={goTopic} />
+      <Sidebar selectedTopic={selectedTopic} onSelectTopic={goTopic}
+        selectedState={selectedState} onSelectState={handleSelectState} posts={posts} />
 
       <main className="flex-1 min-w-0">
         {activeTopic && (
@@ -118,7 +129,8 @@ export default function HomePage() {
           </div>
         )}
 
-        <MobileTopicDrawer selectedTopic={selectedTopic} onSelectTopic={goTopic} />
+        <MobileTopicDrawer selectedTopic={selectedTopic} onSelectTopic={goTopic}
+          selectedState={selectedState} onSelectState={handleSelectState} posts={posts} />
 
         <div className="relative mb-3">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A968A]" />
@@ -139,14 +151,6 @@ export default function HomePage() {
               </button>
             );
           })}
-          <div className="relative ml-auto">
-            <MapPin size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9A968A] pointer-events-none" />
-            <select value={selectedState || ""} onChange={(e) => setSelectedState(e.target.value || null)}
-              className="pl-7 pr-2 py-1.5 text-[12px] border border-[#E6E3DA] bg-white outline-none appearance-none">
-              <option value="">All states</option>
-              {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
-            </select>
-          </div>
         </div>
 
         <div className="flex items-center justify-between mb-1 flex-wrap gap-2">

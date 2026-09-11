@@ -8,6 +8,11 @@ export interface Category {
   id: string;
   label: string;
   topics: Topic[];
+  /** Whether this category's subject matter varies by US state. Drives the
+   *  Nationwide/Local sidebar grouping — see Recess_Forum_Sidebar_Proposal_KO.docx §2. */
+  scope: "nationwide" | "local";
+  /** Hover text for categories whose Nationwide/Local placement isn't obvious from the label alone. */
+  tooltip?: string;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -16,17 +21,7 @@ export interface Category {
 /* ---------------------------------------------------------------------- */
 export const CATEGORIES: Category[] = [
   {
-    id: "school-types", label: "School Types",
-    topics: [
-      { id: "public-school", label: "Public School", blurb: "Enrollment, districts, and public school life." },
-      { id: "private-school", label: "Private School", blurb: "Admissions, tuition, and private school experiences." },
-      { id: "charter-school", label: "Charter School", blurb: "Lotteries, charters vs. district schools." },
-      { id: "homeschool", label: "Homeschooling", blurb: "Curriculum, legal requirements, day-to-day homeschool life." },
-      { id: "online-school", label: "Online / Virtual School", blurb: "Full-time virtual programs and hybrid setups." },
-    ],
-  },
-  {
-    id: "grade-stages", label: "Grade & Age Stages",
+    id: "grade-stages", label: "Grade & Age Stages", scope: "nationwide",
     topics: [
       { id: "early-childhood", label: "Early Childhood / Pre-K", blurb: "Preschool prep and early learning." },
       { id: "elementary", label: "Elementary", blurb: "K–5 school life and learning." },
@@ -35,7 +30,7 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
-    id: "college-prep", label: "College Prep & Admissions",
+    id: "college-prep", label: "College Prep & Admissions", scope: "nationwide",
     topics: [
       { id: "college-applications", label: "Applications & Essays", blurb: "Personal statements, supplements, and building a strong application." },
       { id: "test-prep", label: "SAT / ACT Test Prep", blurb: "Test strategy, timelines, and prep resources." },
@@ -46,7 +41,8 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
-    id: "academics", label: "Academics & Curriculum",
+    id: "academics", label: "Academics & Curriculum", scope: "nationwide",
+    tooltip: "General curriculum discussion. State standards questions may move to Local later.",
     topics: [
       { id: "curriculum", label: "Curriculum & Lesson Planning", blurb: "Choosing and building what kids actually learn." },
       { id: "reading-literacy", label: "Reading & Literacy", blurb: "Phonics, reading levels, and building readers." },
@@ -56,25 +52,8 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
-    id: "support-needs", label: "Support Needs",
-    topics: [
-      { id: "special-ed", label: "Special Education & IEPs", blurb: "IEPs, 504 plans, and navigating school support." },
-      { id: "learning-differences", label: "Learning Differences (ADHD, Dyslexia, etc.)", blurb: "Diagnoses, accommodations, and daily strategies." },
-      { id: "gifted", label: "Gifted & Talented", blurb: "Advanced programs and keeping kids challenged." },
-      { id: "ell", label: "English Language Learners", blurb: "Multilingual households and ELL support." },
-    ],
-  },
-  {
-    id: "enrichment", label: "Enrichment",
-    topics: [
-      { id: "tutoring", label: "Tutoring", blurb: "Finding tutors, pricing, and knowing when it helps." },
-      { id: "extracurriculars", label: "Extracurriculars & Sports", blurb: "Balancing activities with school." },
-      { id: "arts-music", label: "Arts & Music", blurb: "Lessons, recitals, and creative development." },
-      { id: "summer-programs", label: "Summer Programs", blurb: "Camps, summer learning, and avoiding the slide." },
-    ],
-  },
-  {
-    id: "wellbeing", label: "Wellbeing & Social",
+    id: "wellbeing", label: "Wellbeing & Social", scope: "nationwide",
+    tooltip: "Social-emotional topics — not location-specific.",
     topics: [
       { id: "mental-health", label: "Mental Health & Anxiety", blurb: "School stress, anxiety, and emotional support." },
       { id: "bullying", label: "Bullying", blurb: "Recognizing it and working with schools on it." },
@@ -83,7 +62,46 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
-    id: "fun", label: "Fun & Family Time",
+    id: "school-types", label: "School Types", scope: "local",
+    topics: [
+      { id: "public-school", label: "Public School", blurb: "Enrollment, districts, and public school life." },
+      { id: "private-school", label: "Private School", blurb: "Admissions, tuition, and private school experiences." },
+      { id: "charter-school", label: "Charter School", blurb: "Lotteries, charters vs. district schools." },
+      { id: "online-school", label: "Online / Virtual School", blurb: "Full-time virtual programs and hybrid setups." },
+    ],
+  },
+  {
+    id: "homeschooling", label: "Homeschooling", scope: "local",
+    topics: [
+      { id: "homeschool", label: "Homeschooling", blurb: "Curriculum, legal requirements, day-to-day homeschool life." },
+    ],
+  },
+  {
+    id: "support-needs", label: "Support Needs", scope: "local",
+    tooltip: "IEP, 504, learning differences — state process varies.",
+    topics: [
+      { id: "learning-differences", label: "Learning Differences (ADHD, Dyslexia, etc.)", blurb: "Diagnoses, accommodations, and daily strategies." },
+      { id: "gifted", label: "Gifted & Talented", blurb: "Advanced programs and keeping kids challenged." },
+      { id: "ell", label: "English Language Learners", blurb: "Multilingual households and ELL support." },
+    ],
+  },
+  {
+    id: "special-education", label: "Special Education", scope: "local",
+    topics: [
+      { id: "special-ed", label: "Special Education & IEPs", blurb: "IEPs, 504 plans, and navigating school support." },
+    ],
+  },
+  {
+    id: "enrichment", label: "Enrichment", scope: "local",
+    topics: [
+      { id: "tutoring", label: "Tutoring", blurb: "Finding tutors, pricing, and knowing when it helps." },
+      { id: "extracurriculars", label: "Extracurriculars & Sports", blurb: "Balancing activities with school." },
+      { id: "arts-music", label: "Arts & Music", blurb: "Lessons, recitals, and creative development." },
+      { id: "summer-programs", label: "Summer Programs", blurb: "Camps, summer learning, and avoiding the slide." },
+    ],
+  },
+  {
+    id: "fun", label: "Fun & Family Time", scope: "local",
     topics: [
       { id: "weekend-activities", label: "Weekend & Day Trip Ideas", blurb: "Where to go and what to do together." },
       { id: "hobbies-crafts", label: "Hobbies & Crafts", blurb: "Projects, collections, and things kids get into." },
@@ -96,7 +114,7 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
-    id: "logistics", label: "Logistics & Parent Life",
+    id: "logistics", label: "Logistics & Parent Life", scope: "local",
     topics: [
       { id: "school-choice", label: "School Choice & Enrollment", blurb: "Picking a school and navigating enrollment." },
       { id: "financial-aid", label: "Financial Aid & Scholarships", blurb: "Tuition costs, aid, and scholarships." },
@@ -125,6 +143,8 @@ export const CATEGORY_COLORS: Record<string, ColorTriple> = {
   "college-prep": { text: "#9C3B4A", bg: "#F5E4E7", solid: "#9C3B4A" },
   academics: { text: "#A8791E", bg: "#F6EFDD", solid: "#A8791E" },
   "support-needs": { text: "#8C4F86", bg: "#F3E9F2", solid: "#8C4F86" },
+  "special-education": { text: "#3D6E8C", bg: "#E5EEF2", solid: "#3D6E8C" },
+  homeschooling: { text: "#6E7F3F", bg: "#EEF1E2", solid: "#6E7F3F" },
   enrichment: { text: "#217A78", bg: "#E4F2F1", solid: "#217A78" },
   wellbeing: { text: "#B85A3A", bg: "#F7E9E2", solid: "#B85A3A" },
   fun: { text: "#C15B7A", bg: "#F7E6EC", solid: "#C15B7A" },

@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Sidebar collapses to the mobile drawer below this width (see
+   Recess_Forum_Sidebar_Proposal_KO.docx §3/§6) — narrower than Tailwind's
+   default `md` (768px) so the drawer takes over closer to where the fixed
+   sidebar actually starts crowding the content. */
+@theme {
+  --breakpoint-drawer: 720px;
+}
+
 :root {
   --background: #f7f6f3;
   --foreground: #1c1b19;

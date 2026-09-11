@@ -531,6 +531,69 @@ Verified with a disposable test account: logged in, opened Settings,
 clicked the link, landed on `/u/[own id]` showing accurate "0 posts · 0
 replies" (the account hadn't posted). Test account deleted afterward.
 
+## Sidebar redesign — Nationwide/Local grouping (done)
+
+Applied the sidebar proposal from `Recess_Forum_Sidebar_Proposal_KO.docx`
+(written by 진욱, a discussion draft — not a final spec, and it says so).
+`lib/taxonomy.ts`'s `Category` now carries a `scope: "nationwide" | "local"`
+and an optional `tooltip`; both `Sidebar.tsx` and `MobileTopicDrawer.tsx`
+group categories under NATIONWIDE/LOCAL subheadings instead of one flat
+list.
+
+- **Location picker moved inside the sidebar**, nested under the LOCAL
+  heading instead of floating at the top of the whole page — visually
+  ties it to the categories it actually filters, per the doc's stated
+  problem #1. It collapses to a "📍 California ▾ · saved for next visit"
+  chip once set, persisted in `localStorage` (`recess-forum:state`) and
+  restored on load; clicking the chip reopens the picker to change it.
+  It's still a native `<select>`, not a custom autocomplete combobox —
+  that gets you most of the same result (type a state name to jump to
+  it) without building a new component from scratch; a real typeahead
+  combobox is still open if the plain select ever feels insufficient.
+- **Hover tooltips** on the three categories the doc calls out as
+  ambiguous (Academics & Curriculum, Support Needs, Wellbeing & Social),
+  using its exact English tooltip text. Hover on desktop; tap the (i) icon
+  to toggle on mobile, since there's no hover there.
+- **"New" tag replaces raw counts** — the sidebar never actually showed
+  post counts before this (there was nothing to remove), so this
+  directly implements the doc's own argument against raw counts at
+  this stage (a "0" or "1" next to every category reads as "no one's
+  here"): a small red "New" badge appears on a category only if one of
+  its topics got a post in the last 7 days; everything else stays quiet.
+  This resolves one of the doc's open questions (count vs. New tag) in
+  the direction its own reasoning points, since it's explicitly still
+  a "discuss with 동은" item, not a settled decision.
+- **Mobile drawer breakpoint moved to 720px** (was Tailwind's default
+  `md`, 768px) via a Tailwind v4 `@theme` custom breakpoint
+  (`--breakpoint-drawer`) in `globals.css`, replacing every `md:` on the
+  sidebar/drawer pair with `drawer:`. The doc's own open question 4 asks
+  whether 720px is right against real traffic — it's a best-guess number
+  from the doc, not verified against this site's actual visitors.
+
+**Also split out two categories the doc didn't ask for, per direct
+request**: "Special Education" and "Homeschooling" were sub-topics buried
+inside "Support Needs" and "School Types" respectively; both are now
+their own top-level categories (each still holding just that one topic),
+classified Local for the same state-variance reasoning the doc already
+gives for IEP/504 process and school-type rules. Existing posts needed no
+migration — topic ids (`special-ed`, `homeschool`) didn't change, only
+which category object they live under, so `categoryOf()` resolves old
+posts into the new categories automatically.
+
+The doc's own open questions (§6) are left open, not decided here:
+whether Academics & Curriculum should be split further, the exact "New"
+window (used 7 days as written), whether all 9 original categories
+should get tooltips instead of just 3, and the 720px breakpoint choice.
+
+Verified in-browser at both desktop and mobile widths against real
+production data: Nationwide/Local grouping renders correctly, the two
+new categories show their own topics/colors, tooltips fire on hover
+(desktop) and tap (mobile) with the exact doc text, the location chip
+collapses/persists and survives a full reload, "New" badges appeared
+exactly on categories with a post in the last 7 days (confirmed against
+real recent posts), and the topic pill row / category filter click-through
+all resolve correctly for the two new categories.
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final
@@ -573,11 +636,13 @@ were ported faithfully.
 11. ~~Profile tabs (posts/replies) and change-nickname~~ — **done** (see
     above).
 12. ~~"View my posts & replies" link on Settings~~ — **done** (see above).
-13. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
+13. ~~Sidebar redesign (Nationwide/Local, Special Education &
+    Homeschooling as their own categories)~~ — **done** (see above).
+14. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
     (school/IEP/discipline topics where a wrong answer causes real harm)
     and the risk of undercutting real-parent replies before the community
     has any critical mass outweigh the payoff right now; revisit once
     there's an established base of human answers, possibly scoped to
     "AI answers only when no human has yet."
-14. Everything else (a moderation action tied to a report — e.g. deleting
+15. Everything else (a moderation action tied to a report — e.g. deleting
     the reported content directly from `/admin`) — not designed yet.

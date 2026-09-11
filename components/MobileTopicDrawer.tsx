@@ -1,10 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { ChevronDown, ListTree, X } from "lucide-react";
-import { CATEGORIES, colorForCategory, topicById, type Topic } from "@/lib/taxonomy";
+import { useMemo, useRef, useState } from "react";
+import { ChevronDown, Info, ListTree, MapPin, X } from "lucide-react";
+import { CATEGORIES, colorForCategory, topicById, type Category, type Topic } from "@/lib/taxonomy";
+import { US_STATES } from "@/lib/location";
+import type { Post } from "@/lib/types";
 
 const EDGE_SWIPE_THRESHOLD = 45;
+const NEW_TAG_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 function TopicRow({ topic, categoryId, active, onClick }: { topic: Topic; categoryId: string; active: boolean; onClick: () => void }) {
   const c = colorForCategory(categoryId);
@@ -18,9 +21,53 @@ function TopicRow({ topic, categoryId, active, onClick }: { topic: Topic; catego
   );
 }
 
-export function MobileTopicDrawer({ selectedTopic, onSelectTopic }: { selectedTopic: string | null; onSelectTopic: (topicId: string | null) => void }) {
+function CategoryGroup({
+  cat, isNew, open, onToggle, selectedTopic, onSelectTopic,
+}: {
+  cat: Category; isNew: boolean; open: boolean; onToggle: () => void;
+  selectedTopic: string | null; onSelectTopic: (id: string | null) => void;
+}) {
+  const [showTip, setShowTip] = useState(false);
+  return (
+    <div className="mt-1">
+      <div className="relative">
+        <button onClick={onToggle} className="w-full flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold text-[#9A968A] tracking-wide">
+          <span className="flex-1 text-left">{cat.label}</span>
+          {isNew && <span className="px-1.5 py-0.5 rounded-sm text-[9px] font-bold bg-[#B23B3B] text-white tracking-wide">New</span>}
+          {cat.tooltip && (
+            <Info size={12} className="shrink-0" onClick={(e) => { e.stopPropagation(); setShowTip((v) => !v); }} />
+          )}
+          <ChevronDown size={12} className={`shrink-0 transition-transform ${open ? "" : "-rotate-90"}`} />
+        </button>
+        {cat.tooltip && showTip && (
+          <div className="mx-4 mb-1.5 rounded-sm bg-[#1C1B19] px-2.5 py-2 text-[11px] leading-snug text-white">
+            {cat.tooltip}
+          </div>
+        )}
+      </div>
+      {open && (
+        <div className="flex flex-col">
+          {cat.topics.map((t) => (
+            <TopicRow key={t.id} topic={t} categoryId={cat.id} active={selectedTopic === t.id} onClick={() => onSelectTopic(selectedTopic === t.id ? null : t.id)} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function MobileTopicDrawer({
+  selectedTopic, onSelectTopic, selectedState, onSelectState, posts,
+}: {
+  selectedTopic: string | null;
+  onSelectTopic: (topicId: string | null) => void;
+  selectedState: string | null;
+  onSelectState: (state: string | null) => void;
+  posts: Post[] | null;
+}) {
   const [open, setOpen] = useState(false);
   const [openCat, setOpenCat] = useState<Set<string>>(() => new Set());
+  const [editingState, setEditingState] = useState(false);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   const toggle = (id: string) => setOpenCat((s) => {
@@ -28,6 +75,22 @@ export function MobileTopicDrawer({ selectedTopic, onSelectTopic }: { selectedTo
     if (n.has(id)) n.delete(id); else n.add(id);
     return n;
   });
+
+  const recentCategoryIds = useMemo(() => {
+    if (!posts) return new Set<string>();
+    const cutoff = Date.now() - NEW_TAG_WINDOW_MS;
+    const ids = new Set<string>();
+    for (const p of posts) {
+      if (p.createdAt < cutoff) continue;
+      const cat = CATEGORIES.find((c) => c.topics.some((t) => t.id === p.topicId));
+      if (cat) ids.add(cat.id);
+    }
+    return ids;
+  }, [posts]);
+
+  const nationwide = CATEGORIES.filter((c) => c.scope === "nationwide");
+  const local = CATEGORIES.filter((c) => c.scope === "local");
+  const stateName = selectedState ? US_STATES.find((s) => s.code === selectedState)?.name : null;
 
   const activeTopic = selectedTopic ? topicById(selectedTopic) : null;
 
@@ -60,7 +123,7 @@ export function MobileTopicDrawer({ selectedTopic, onSelectTopic }: { selectedTo
 
   return (
     <>
-      <div className="md:hidden mb-3">
+      <div className="drawer:hidden mb-3">
         <button onClick={() => setOpen(true)}
           className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-[#26364A] text-white text-[13px] shadow-sm">
           <span className="flex items-center gap-2 font-semibold truncate">
@@ -72,12 +135,12 @@ export function MobileTopicDrawer({ selectedTopic, onSelectTopic }: { selectedTo
       </div>
 
       {!open && (
-        <div className="md:hidden fixed left-0 top-0 bottom-0 w-6 z-40"
+        <div className="drawer:hidden fixed left-0 top-0 bottom-0 w-6 z-40"
           onTouchStart={onEdgeTouchStart} onTouchMove={onEdgeTouchMove} onTouchEnd={onTouchEnd} />
       )}
 
       {open && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-50 drawer:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
           <div
             onTouchStart={onPanelTouchStart} onTouchMove={onPanelTouchMove} onTouchEnd={onTouchEnd}
@@ -93,22 +156,40 @@ export function MobileTopicDrawer({ selectedTopic, onSelectTopic }: { selectedTo
                 className={`w-full text-left px-4 py-2.5 text-[14px] font-semibold border-l-2 ${!selectedTopic ? "border-[#26364A] text-[#1C1B19] bg-[#EFEDE6]" : "border-transparent text-[#5B584F]"}`}>
                 All Topics
               </button>
-              {CATEGORIES.map((cat) => (
-                <div key={cat.id} className="mt-1">
-                  <button onClick={() => toggle(cat.id)}
-                    className="w-full flex items-center justify-between px-4 py-2 text-[12px] font-semibold text-[#9A968A] tracking-wide">
-                    {cat.label}
-                    <ChevronDown size={12} className={`transition-transform ${openCat.has(cat.id) ? "" : "-rotate-90"}`} />
+
+              <div className="px-4 pt-3 text-[11px] font-semibold text-[#9A968A] tracking-wide">NATIONWIDE</div>
+              {nationwide.map((cat) => (
+                <CategoryGroup key={cat.id} cat={cat} isNew={recentCategoryIds.has(cat.id)} open={openCat.has(cat.id)}
+                  onToggle={() => toggle(cat.id)} selectedTopic={selectedTopic}
+                  onSelectTopic={(id) => { onSelectTopic(id); setOpen(false); }} />
+              ))}
+
+              <div className="px-4 pt-3 text-[11px] font-semibold text-[#9A968A] tracking-wide">LOCAL</div>
+              <div className="px-4 py-2">
+                {selectedState && !editingState ? (
+                  <button onClick={() => setEditingState(true)} className="flex items-center gap-1.5 text-[12px]">
+                    <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#EFEDE6] text-[#3A382F] font-medium">
+                      <MapPin size={11} /> {stateName} <ChevronDown size={10} />
+                    </span>
+                    <span className="text-[10px] text-[#9A968A] italic">saved for next visit</span>
                   </button>
-                  {openCat.has(cat.id) && (
-                    <div className="flex flex-col">
-                      {cat.topics.map((t) => (
-                        <TopicRow key={t.id} topic={t} categoryId={cat.id} active={selectedTopic === t.id}
-                          onClick={() => { onSelectTopic(selectedTopic === t.id ? null : t.id); setOpen(false); }} />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                ) : (
+                  <div className="relative">
+                    <MapPin size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#9A968A] pointer-events-none" />
+                    <select autoFocus={editingState} value={selectedState || ""}
+                      onChange={(e) => { onSelectState(e.target.value || null); setEditingState(false); }}
+                      onBlur={() => setEditingState(false)}
+                      className="w-full pl-6 pr-2 py-1.5 text-[12px] border border-[#E6E3DA] bg-white outline-none appearance-none">
+                      <option value="">All states</option>
+                      {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+              {local.map((cat) => (
+                <CategoryGroup key={cat.id} cat={cat} isNew={recentCategoryIds.has(cat.id)} open={openCat.has(cat.id)}
+                  onToggle={() => toggle(cat.id)} selectedTopic={selectedTopic}
+                  onSelectTopic={(id) => { onSelectTopic(id); setOpen(false); }} />
               ))}
             </div>
           </div>
