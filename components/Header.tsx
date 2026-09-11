@@ -81,7 +81,10 @@ export function Header() {
               <Link href="/settings" title="Settings" className="p-2 text-[#9A968A] hover:text-[#1C1B19] transition-colors sm:hidden">
                 <Settings size={16} />
               </Link>
-              <button onClick={logout} title="Log out" className="p-2 text-[#9A968A] hover:text-[#1C1B19] transition-colors">
+              <button onClick={logout} className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#5B584F] hover:text-[#1C1B19] transition-colors">
+                <LogOut size={15} /> Log out
+              </button>
+              <button onClick={logout} title="Log out" className="p-2 text-[#9A968A] hover:text-[#1C1B19] transition-colors sm:hidden">
                 <LogOut size={16} />
               </button>
             </>
