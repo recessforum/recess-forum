@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Upload } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -107,7 +108,12 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-lg mx-auto px-6 py-10 w-full">
-      <h1 className="text-[22px] font-semibold text-[#1C1B19] mb-6">Settings</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-[22px] font-semibold text-[#1C1B19]">Settings</h1>
+        <Link href={`/u/${profile.id}`} className="text-[13px] font-medium text-[#26364A] hover:underline">
+          View my posts &amp; replies
+        </Link>
+      </div>
 
       <section className="mb-10">
         <h2 className="text-[13px] font-semibold text-[#5B584F] uppercase tracking-wide mb-3">Nickname</h2>

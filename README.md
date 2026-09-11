@@ -517,6 +517,20 @@ project-wide query confirming zero remaining posts/comments where `score
 <> sum(votes.dir)`. Test account and its test votes cleaned up after
 (each toggled fully back off, leaving no residue in either table).
 
+## "View my posts & replies" link on Settings (done)
+
+The Posts/Replies tabs on `/u/[id]` (see "Profile tabs" above) were only
+reachable by clicking someone's author name on a post or comment — there
+was no way to reach *your own* profile page if you hadn't done that, so
+the feature existed but had no discoverable entry point. Added a "View my
+posts & replies" link next to the Settings heading, pointing to
+`/u/{profile.id}`. No new logic — just a link to the page that already
+had the list.
+
+Verified with a disposable test account: logged in, opened Settings,
+clicked the link, landed on `/u/[own id]` showing accurate "0 posts · 0
+replies" (the account hadn't posted). Test account deleted afterward.
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final
@@ -558,11 +572,12 @@ were ported faithfully.
     (see above).
 11. ~~Profile tabs (posts/replies) and change-nickname~~ — **done** (see
     above).
-12. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
+12. ~~"View my posts & replies" link on Settings~~ — **done** (see above).
+13. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
     (school/IEP/discipline topics where a wrong answer causes real harm)
     and the risk of undercutting real-parent replies before the community
     has any critical mass outweigh the payoff right now; revisit once
     there's an established base of human answers, possibly scoped to
     "AI answers only when no human has yet."
-13. Everything else (a moderation action tied to a report — e.g. deleting
+14. Everything else (a moderation action tied to a report — e.g. deleting
     the reported content directly from `/admin`) — not designed yet.
