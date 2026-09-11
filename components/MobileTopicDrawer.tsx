@@ -31,7 +31,7 @@ function CategoryGroup({
   return (
     <div className="mt-1">
       <div className="relative">
-        <button onClick={onToggle} className="w-full flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold text-[#9A968A] tracking-wide">
+        <button onClick={onToggle} className="w-full flex items-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-[#5B584F] tracking-wide">
           <span className="flex-1 text-left">{cat.label}</span>
           {isNew && <span className="px-1.5 py-0.5 rounded-sm text-[9px] font-bold bg-[#B23B3B] text-white tracking-wide">New</span>}
           {cat.tooltip && (
@@ -174,15 +174,20 @@ export function MobileTopicDrawer({
                     <span className="text-[10px] text-[#9A968A] italic">saved for next visit</span>
                   </button>
                 ) : (
-                  <div className="relative">
-                    <MapPin size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#9A968A] pointer-events-none" />
-                    <select autoFocus={editingState} value={selectedState || ""}
-                      onChange={(e) => { onSelectState(e.target.value || null); setEditingState(false); }}
-                      onBlur={() => setEditingState(false)}
-                      className="w-full pl-6 pr-2 py-1.5 text-[12px] border border-[#E6E3DA] bg-white outline-none appearance-none">
-                      <option value="">All states</option>
-                      {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
-                    </select>
+                  <div>
+                    <p className="text-[11px] text-[#9A968A] leading-snug mb-1.5">
+                      Showing posts from every state. Only want to see posts from where you live? Select your state below.
+                    </p>
+                    <div className="relative">
+                      <MapPin size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#9A968A] pointer-events-none" />
+                      <select autoFocus={editingState} value={selectedState || ""}
+                        onChange={(e) => { onSelectState(e.target.value || null); setEditingState(false); }}
+                        onBlur={() => setEditingState(false)}
+                        className="w-full pl-6 pr-2 py-1.5 text-[12px] border border-[#E6E3DA] bg-white outline-none appearance-none">
+                        <option value="">All states</option>
+                        {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+                      </select>
+                    </div>
                   </div>
                 )}
               </div>
