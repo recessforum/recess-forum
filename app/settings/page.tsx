@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Trash2, Upload } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/Avatar";
@@ -22,6 +22,10 @@ export default function SettingsPage() {
   const [nickname, setNickname] = useState(profile?.display_name ?? "");
   const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [nicknameSaving, setNicknameSaving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteText, setDeleteText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -84,6 +88,25 @@ export default function SettingsPage() {
     });
     await refreshProfile();
     setUploading(false);
+  };
+
+  const deleteAccount = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch("/api/account", { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setDeleteError(data?.error || "Something went wrong. Please try again.");
+        setDeleting(false);
+        return;
+      }
+      router.push("/");
+      router.refresh();
+    } catch {
+      setDeleteError("Something went wrong. Please try again.");
+      setDeleting(false);
+    }
   };
 
   const unblock = async (userId: string) => {
@@ -165,6 +188,36 @@ export default function SettingsPage() {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10 pt-8 border-t border-[#E6E3DA]">
+        <h2 className="text-[13px] font-semibold text-[#B23B3B] uppercase tracking-wide mb-3">Danger zone</h2>
+        {!confirmingDelete ? (
+          <button onClick={() => setConfirmingDelete(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#B23B3B] border border-[#E6C9C9] hover:bg-[#FBF1F1] transition-colors">
+            <Trash2 size={14} /> Delete my account
+          </button>
+        ) : (
+          <div className="max-w-sm border border-[#E6C9C9] bg-[#FBF1F1] p-4">
+            <p className="text-[13px] text-[#5B584F] mb-3">
+              This permanently deletes your account and every post, reply, and vote you&apos;ve made. This can&apos;t be undone.
+              Type <span className="font-semibold text-[#1C1B19]">DELETE</span> to confirm.
+            </p>
+            <input value={deleteText} onChange={(e) => setDeleteText(e.target.value)}
+              className="w-full px-3 py-2 border border-[#E6E3DA] bg-white text-[14px] outline-none focus:border-[#B23B3B] mb-3" />
+            {deleteError && <p className="text-[12px] text-[#B23B3B] mb-3">{deleteError}</p>}
+            <div className="flex gap-2">
+              <button disabled={deleteText !== "DELETE" || deleting} onClick={deleteAccount}
+                className="flex items-center gap-2 px-3 py-2 text-[13px] font-semibold bg-[#B23B3B] text-white disabled:opacity-40 hover:bg-[#96302F] transition-colors">
+                {deleting && <Loader2 size={13} className="animate-spin" />} Permanently delete
+              </button>
+              <button onClick={() => { setConfirmingDelete(false); setDeleteText(""); setDeleteError(null); }}
+                className="px-3 py-2 text-[13px] font-medium text-[#5B584F] hover:text-[#1C1B19]">
+                Cancel
+              </button>
+            </div>
           </div>
         )}
       </section>

@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Apple, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -33,6 +33,14 @@ function LoginForm() {
     });
   };
 
+  const signInWithApple = async () => {
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: "apple",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+  };
+
   const submit = async () => {
     setError(null);
     setSending(true);
@@ -48,6 +56,11 @@ function LoginForm() {
     <div className="max-w-sm mx-auto px-6 py-16">
       <h1 className="text-[22px] font-semibold text-[#1C1B19] mb-1">Welcome back</h1>
       <p className="text-[13px] text-[#9A968A] mb-6">Log in to post, comment, and vote.</p>
+
+      <button onClick={signInWithApple}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black text-white text-[14px] font-medium mb-3 hover:bg-[#1a1a1a] transition-colors">
+        <Apple size={16} fill="white" /> Continue with Apple
+      </button>
 
       <button onClick={signInWithGoogle}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-[#E6E3DA] text-[14px] font-medium text-[#1C1B19] mb-4 hover:bg-[#FAF9F7] transition-colors">

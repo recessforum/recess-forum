@@ -49,7 +49,7 @@ export interface Comment {
   createdAt: number;
 }
 
-export type ReportTargetType = "post" | "comment";
+export type ReportTargetType = "post" | "comment" | "user";
 export type ReportStatus = "pending" | "reviewed" | "dismissed";
 
 export interface Report {

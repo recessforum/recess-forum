@@ -166,6 +166,11 @@ export default function AdminPage() {
                   View post
                 </a>
               )}
+              {r.targetType === "user" && (
+                <a href={`/u/${r.targetId}`} target="_blank" rel="noopener noreferrer" className="text-[12px] text-[#26364A] underline mb-3 inline-block">
+                  View profile
+                </a>
+              )}
               <div className="flex gap-2 mt-3">
                 <button disabled={workingId === r.id} onClick={() => resolveReport(r.id, "resolve")}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-semibold bg-[#217A78] text-white disabled:opacity-40 hover:bg-[#1a615f] transition-colors">

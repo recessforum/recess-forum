@@ -10,6 +10,7 @@ import { timeAgo } from "@/lib/ranking";
 import type { Comment, Post, PublicProfile } from "@/lib/types";
 import { Avatar } from "@/components/Avatar";
 import { AuthorBadges } from "@/components/Badges";
+import { AuthorMenu } from "@/components/AuthorMenu";
 import { PostRow } from "@/components/PostRow";
 
 export default function ProfilePage() {
@@ -90,9 +91,13 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 w-full">
-      <button onClick={() => router.back()} className="flex items-center gap-1 text-[13px] font-medium text-[#5B584F] hover:text-[#1C1B19] mb-5">
-        <ChevronLeft size={15} /> Back
-      </button>
+      <div className="flex items-center justify-between mb-5">
+        <button onClick={() => router.back()} className="flex items-center gap-1 text-[13px] font-medium text-[#5B584F] hover:text-[#1C1B19]">
+          <ChevronLeft size={15} /> Back
+        </button>
+        <AuthorMenu targetType="user" targetId={profile.id} authorId={profile.id} authorName={profile.displayName}
+          onBlocked={() => router.push("/")} />
+      </div>
 
       <div className="flex items-center gap-4 pb-6 mb-6 border-b border-[#E6E3DA]">
         <Avatar url={profile.avatarUrl} name={profile.displayName} size={56} />

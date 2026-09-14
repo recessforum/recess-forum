@@ -594,6 +594,77 @@ exactly on categories with a post in the last 7 days (confirmed against
 real recent posts), and the topic pill row / category filter click-through
 all resolve correctly for the two new categories.
 
+## Apple App Store compliance audit (done, code side)
+
+Before wrapping Recess Forum as a mobile app, audited it against the
+specific App Store review rejections a sibling project (Mentodari) actually
+hit, rather than guessing at Apple's guidelines in the abstract. Found and
+fixed four real gaps:
+
+**1. Report/Block missing from author profiles (Guideline 1.2, User-Generated
+Content)** — `components/AuthorMenu.tsx` (Report/Block) was already wired
+into posts and comments but not onto the author profile page itself
+(`/u/[id]`) — the exact shape of gap that got Mentodari's UGC review
+rejected twice. Added `AuthorMenu` to the profile page header (hidden on
+your own profile, same as everywhere else). This needed a new `"user"`
+`target_type` on the `reports` table (previously only `'post'`/`'comment'`)
+— `schema.sql`'s check constraint, `lib/types.ts`'s `ReportTargetType`, the
+`/api/reports` route, and `/admin`'s report list (now links to the profile
+for a `user` report) were all updated. **The live database's `reports`
+check constraint still needs a one-time manual update** — this repo has no
+migration runner, so run this once in the Supabase SQL Editor:
+```sql
+alter table reports drop constraint reports_target_type_check;
+alter table reports add constraint reports_target_type_check check (target_type in ('post', 'comment', 'user'));
+```
+
+**2. No in-app account deletion (Guideline 5.1.1(v))** — added a "Danger
+zone" section to `/settings` with a type-"DELETE"-to-confirm flow, backed by
+a new `DELETE /api/account` route (`app/api/account/route.ts`) that calls
+`supabase.auth.admin.deleteUser()` via the existing service-role admin
+client (`lib/supabase/admin.ts`, already used for email notifications).
+Deleting the `auth.users` row cascades through `profiles` and every table
+that references it (`posts`, `comments`, `votes`, `reports`, `blocks`,
+etc. — all already `on delete cascade` in `schema.sql`), so this is a real
+hard delete, not a soft-delete/anonymize — appropriate here since, unlike
+Mentodari, there are no payment or booking records tied to a user that
+would need to survive their deletion. While testing this locally we hit a
+real bug: a failed request whose body isn't valid JSON (e.g. the plain 500
+Next.js returns when `createAdminClient()` throws before producing a JSON
+response) left the delete button spinning forever because `res.json()`
+itself threw, unhandled. Fixed with a `try/catch` around the fetch and a
+`.catch()` on the JSON parse, and the API route now catches
+`createAdminClient()`'s own throw instead of letting it crash the handler.
+
+**3. No Terms of Use / signup consent gate (mirrors Mentodari's `e37f6c8`
+fix)** — added `/terms` (`app/terms/page.tsx`, same structure as the
+existing `/privacy` page: community standards, content ownership, account
+termination, no-warranty, contact). `/signup` now has a required "I agree
+to the Terms of Use and Privacy Policy" checkbox that gates both the
+email/password submit button and the Google sign-in button (unchecked =
+both disabled). `/privacy`'s "Your choices" section was updated to point at
+the new self-service deletion instead of "email us."
+
+**4. No Sign in with Apple (Guideline 4.8 — parity with existing Google
+Sign-In)** — added a "Continue with Apple" button to `/login` and `/signup`
+(gated by the same consent checkbox on signup), calling
+`supabase.auth.signInWithOAuth({ provider: "apple" })`. The existing
+`/auth/callback` route already handles the OAuth code exchange
+provider-agnostically (it was written for Google but never assumed a
+specific provider), so no backend change was needed there. **This can't be
+fully wired up without manual dashboard work only the account owner can
+do**: create a Services ID + Sign in with Apple key in the Apple Developer
+Portal (Certificates, Identifiers & Profiles → Identifiers), then paste the
+Services ID, Team ID, Key ID, and private key into Supabase → Authentication
+→ Providers → Apple. Until that's done, the button is live in the UI but
+the OAuth flow will fail at Supabase.
+
+Not done yet, deliberately deferred to when the native shell exists:
+genuine native functionality for Guideline 4.2 (Minimum Functionality —
+likely native share at minimum, mirroring Mentodari's `@capacitor/share`)
+and camera/photo-library `Info.plist` usage strings (depends on which
+Capacitor plugins end up handling avatar upload).
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final
@@ -638,11 +709,21 @@ were ported faithfully.
 12. ~~"View my posts & replies" link on Settings~~ — **done** (see above).
 13. ~~Sidebar redesign (Nationwide/Local, Special Education &
     Homeschooling as their own categories)~~ — **done** (see above).
-14. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
+14. ~~Apple App Store compliance audit and fixes (report/block on author
+    profiles, in-app account deletion, Terms of Use consent gate, Sign in
+    with Apple)~~ — **done, code side** (see above). Sign in with Apple
+    still needs manual Apple Developer + Supabase dashboard setup before
+    it works end-to-end.
+15. Mobile app — wrap the live production site with Capacitor (not React
+    Native, not a static export), following Mentodari's proven
+    architecture. Add real native functionality (native share at minimum)
+    once the shell exists, plus `Info.plist` usage strings for whichever
+    plugins end up handling avatar upload.
+16. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
     (school/IEP/discipline topics where a wrong answer causes real harm)
     and the risk of undercutting real-parent replies before the community
     has any critical mass outweigh the payoff right now; revisit once
     there's an established base of human answers, possibly scoped to
     "AI answers only when no human has yet."
-15. Everything else (a moderation action tied to a report — e.g. deleting
+17. Everything else (a moderation action tied to a report — e.g. deleting
     the reported content directly from `/admin`) — not designed yet.

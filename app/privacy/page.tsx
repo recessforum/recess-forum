@@ -84,9 +84,12 @@ export default function PrivacyPage() {
 
       <Section title="Your choices">
         <p>
-          You can edit or delete your posts and comments at any time. To delete
-          your account or request a copy of your data, contact us using the
-          address below and we&apos;ll take care of it.
+          You can edit or delete your posts and comments at any time. You can
+          also permanently delete your account and all of your content
+          yourself, at any time, from{" "}
+          <a href="/settings" className="text-[#26364A] font-medium hover:underline">Settings</a>{" "}
+          — no need to contact us. If you&apos;d rather we do it for you, or
+          you want a copy of your data first, email us at the address below.
         </p>
       </Section>
 

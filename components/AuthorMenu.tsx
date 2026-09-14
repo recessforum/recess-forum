@@ -12,7 +12,7 @@ export function AuthorMenu({
   authorName,
   onBlocked,
 }: {
-  targetType: "post" | "comment";
+  targetType: "post" | "comment" | "user";
   targetId: string;
   authorId: string;
   authorName: string;
@@ -64,7 +64,7 @@ export function AuthorMenu({
         </>
       )}
       {showReport && (
-        <ReportModal targetLabel={targetType === "post" ? "post" : "comment"} onClose={() => setShowReport(false)} onSubmit={submitReport} />
+        <ReportModal targetLabel={targetType === "post" ? "post" : targetType === "comment" ? "comment" : "user"} onClose={() => setShowReport(false)} onSubmit={submitReport} />
       )}
     </div>
   );

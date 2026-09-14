@@ -120,7 +120,7 @@ create index circle_memberships_user_idx on circle_memberships(user_id);
 create table reports (
   id uuid primary key default gen_random_uuid(),
   reporter_id uuid not null references profiles(id) on delete cascade,
-  target_type text not null check (target_type in ('post', 'comment')),
+  target_type text not null check (target_type in ('post', 'comment', 'user')),
   target_id uuid not null,
   reason text not null,
   status text not null default 'pending' check (status in ('pending', 'reviewed', 'dismissed')),

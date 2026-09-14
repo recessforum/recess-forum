@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { Apple, CheckCircle2, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
@@ -12,14 +12,25 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   const inputClass = "w-full px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A] transition-colors";
-  const canSubmit = email.trim() && password.length >= 6 && nickname.trim() && !sending;
+  const canSubmit = email.trim() && password.length >= 6 && nickname.trim() && agreed && !sending;
 
   const signInWithGoogle = async () => {
+    if (!agreed) return;
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+  };
+
+  const signInWithApple = async () => {
+    if (!agreed) return;
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: "apple",
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
   };
@@ -58,8 +69,24 @@ export default function SignupPage() {
       <h1 className="text-[22px] font-semibold text-[#1C1B19] mb-1">Create an account</h1>
       <p className="text-[13px] text-[#9A968A] mb-6">Join the conversation — post under a nickname if you&apos;d rather not use your name.</p>
 
-      <button onClick={signInWithGoogle}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-[#E6E3DA] text-[14px] font-medium text-[#1C1B19] mb-4 hover:bg-[#FAF9F7] transition-colors">
+      <label className="flex items-start gap-2 mb-4 cursor-pointer">
+        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)}
+          className="mt-0.5 shrink-0" />
+        <span className="text-[13px] text-[#5B584F]">
+          I agree to the{" "}
+          <Link href="/terms" target="_blank" className="text-[#26364A] font-medium hover:underline">Terms of Use</Link>
+          {" "}and{" "}
+          <Link href="/privacy" target="_blank" className="text-[#26364A] font-medium hover:underline">Privacy Policy</Link>.
+        </span>
+      </label>
+
+      <button onClick={signInWithApple} disabled={!agreed}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black text-white text-[14px] font-medium mb-3 disabled:opacity-40 hover:bg-[#1a1a1a] transition-colors">
+        <Apple size={16} fill="white" /> Continue with Apple
+      </button>
+
+      <button onClick={signInWithGoogle} disabled={!agreed}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-[#E6E3DA] text-[14px] font-medium text-[#1C1B19] mb-4 disabled:opacity-40 hover:bg-[#FAF9F7] transition-colors">
         Continue with Google
       </button>
 
