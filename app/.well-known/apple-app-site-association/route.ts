@@ -6,10 +6,7 @@ import { NextResponse } from "next/server";
 // (Google/Apple) started inside the app can hand the session back to the
 // app's own webview instead of stranding the user logged into Safari.
 //
-// TEAM_ID must be replaced with the real 10-character Apple Developer Team
-// ID before this does anything — Apple's CDN won't associate the domain
-// with the app until it does.
-const TEAM_ID = "TEAM_ID";
+const TEAM_ID = "623K9BU5H6";
 const APP_ID = `${TEAM_ID}.com.recessforum.app`;
 
 export async function GET() {

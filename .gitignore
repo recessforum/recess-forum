@@ -47,6 +47,9 @@ next-env.d.ts
 android/app/build
 android/.gradle
 android/local.properties
+# Release signing secrets — never commit. See README's Android release
+# signing section for how to regenerate this on a new machine.
+android/keystore.properties
 ios/App/Pods
 ios/App/build
 ios/App/DerivedData

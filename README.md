@@ -814,23 +814,41 @@ The fix is Universal Links (iOS) / App Links (Android): register
 then have the app's own JS point its webview at that URL when it arrives.
 Three pieces, all now in place:
 
+Confirmed this was worth fixing (not just a theoretical Apple-only concern)
+by actually tapping "Continue with Google" inside a real build running in
+the iOS Simulator: the app handed off to system Safari exactly as
+predicted, showed the real `accounts.google.com` sign-in page, and
+returning to the app afterward left it still logged out — the existing
+Google sign-in has had this problem the whole time, just never tested
+inside the native wrapper before now.
+
 1. **Domain association files**, served from the real site so Apple/Google
    can verify the app is allowed to claim this domain:
    - `app/.well-known/apple-app-site-association/route.ts` — a route
      handler, not a static file, because the path has no extension (that's
      required, not a mistake) and a route handler makes it trivial to get
-     the `application/json` content-type right. **Needs a manual edit**:
-     the `TEAM_ID` placeholder at the top must become the real 10-character
-     Apple Developer Team ID once that's known — until then this file
-     doesn't associate anything.
-   - `public/.well-known/assetlinks.json` — includes the SHA256
-     certificate fingerprint of the debug keystore that was auto-created
-     while verifying the Android build (`~/.android/debug.keystore`, via
-     `keytool -list -v`). **Also needs a manual addition later**: once a
-     real release signing key exists for the Play Store, its SHA256
-     fingerprint needs to be added to the `sha256_cert_fingerprints` array
-     alongside the debug one — release-signed builds won't verify against
-     only the debug fingerprint.
+     the `application/json` content-type right. `TEAM_ID` is filled in with
+     the real Apple Developer Team ID (`623K9BU5H6`, from the account's
+     Membership page).
+   - `public/.well-known/assetlinks.json` — lists two SHA256 certificate
+     fingerprints: the debug keystore's (`~/.android/debug.keystore`, for
+     local testing) and a real release key's, generated specifically for
+     this (`keytool -genkeypair`, RSA 2048, 25-year validity, kept at
+     `~/keys/recessforum/recessforum-release.keystore` — **outside the
+     repo, never committed**, since losing track of a release signing key
+     means never being able to publish an update under the same app
+     identity again). The release build is wired to actually use it:
+     `android/app/build.gradle` reads `android/keystore.properties`
+     (gitignored — holds the keystore path and passwords) into a
+     `signingConfigs.release` block, applied to `buildTypes.release`, with
+     the whole thing gated on the properties file existing so a machine
+     without it still builds an (unsigned) release APK instead of failing.
+     Verified for real, not just assumed correct: ran `gradlew
+     assembleRelease` and checked the output with `apksigner
+     verify --print-certs` — the produced APK's certificate SHA-256
+     digest matches the one now in `assetlinks.json` exactly. `gradlew
+     assembleDebug` was re-run afterward too, confirming the signing
+     changes didn't disturb the debug build.
 2. **Native declarations** that a link to `/auth/callback` should try the
    app first:
    - iOS: `ios/App/App/App.entitlements` (new file, `applinks:` for both
