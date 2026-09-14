@@ -7,5 +7,7 @@
 		<string>applinks:recessforum.com</string>
 		<string>applinks:www.recessforum.com</string>
 	</array>
+	<key>com.apple.developer.associated-domains.mdm-managed</key>
+	<true/>
 </dict>
 </plist>
