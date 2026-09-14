@@ -715,10 +715,62 @@ equivalent `gradlew assembleDebug` build wasn't run — that still needs
 verifying in an environment with Android Studio/SDK.
 
 Bundle ID: `com.recessforum.app` (matches the `com.<brand>.app` pattern
-Mentodari uses). Not done yet: app icon/launch screen art (currently
-Capacitor's default placeholder assets), and an actual App Store/Play
-Store submission (screenshots, listing copy, review notes) — this is a
-locally-verified native wrapper, not a submitted app.
+Mentodari uses). Not done yet: an actual App Store/Play Store submission
+(screenshots, listing copy, review notes) — this is a locally-verified
+native wrapper, not a submitted app.
+
+### App icon and launch screen (done)
+
+Generated from the site's existing bell mark (`components/RecessMark.tsx`,
+also `app/icon.svg`) rather than a new design — same navy (`#26364A`)/
+cream (`#F7F6F3`)/gold (`#B08D45`) the header logo already uses, so the
+home-screen icon and launch screen look like an extension of the site, not
+a separate default-Capacitor placeholder (which is what Mentodari's own
+launch screen still is — its icon was customized but its splash was never
+touched, so it wasn't a template to copy here). The first pass was just the
+cream bell directly on navy — too dark and flat once actually seen at icon
+size, so the app-specific mark (`assets/logo.svg`, kept separate from the
+site's own `RecessMark`/`icon.svg` rather than changing those) adds a thick
+gold circle behind the bell, and switches the bell's clapper from gold to
+cream so it doesn't disappear into that same-colored circle behind it.
+
+`assets/logo.png` (1024×1024, transparent background, the bell scaled and
+padded to stay inside the safe zone Android's adaptive-icon mask crops to)
+is the single source image, run through `@capacitor/assets` in "easy mode"
+to generate every iOS/Android icon and splash size:
+```shell
+npx @capacitor/assets generate --ios --android \
+  --iconBackgroundColor '#26364A' --iconBackgroundColorDark '#26364A' \
+  --splashBackgroundColor '#26364A' --splashBackgroundColorDark '#26364A' \
+  --logoSplashScale 0.75
+```
+(`@capacitor/assets` itself isn't kept as a dependency — it pulls in an old
+bundled `sharp`/`node-tar` with known CVEs, harmless for a one-off local
+generation step but not worth carrying in `package-lock.json` permanently;
+reinstall it with the command above whenever the icon/splash need
+regenerating, then remove it again.) `--logoSplashScale` needed hand-tuning
+by actually measuring the output, not just trusting the flag name: it
+scales the whole 1024×1024 *source canvas* (including the transparent
+padding around the bell) to that fraction of the splash width, not the
+bell's own visible size — `0.2` (the tool's default) rendered a bell too
+small to read on a 2732px canvas, and `0.6` was still only ~8% of the
+canvas width once the math was worked through; `0.75` lands the bell at a
+legible ~29%. `--iconBackgroundColorDark`/`--splashBackgroundColorDark` are
+set to the same navy as the light variants — the site has no separate dark
+theme design, so light/dark app icons and launch screens intentionally
+look identical rather than guessing at a second palette.
+
+Verified by rebuilding and reinstalling on the iOS Simulator and inspecting
+the generated files directly (`AppIcon-512@2x.png`, the `Splash.imageset`
+PNGs) rather than trusting the generator output blindly — confirmed the
+bell renders correctly on the navy background at both icon and splash
+sizes. One known, low-priority gap: the legacy (pre-Android-8.0,
+API < 26) non-adaptive `ic_launcher.png` came out of the generator with a
+transparent background instead of navy baked in (the modern adaptive icon
+`mipmap-anydpi-v26/ic_launcher.xml`, which is what essentially every real
+device in 2026 actually uses, is correct — background and foreground
+layers composite properly). Not fixed, since it only affects devices
+Android has not shipped in 8+ years.
 
 ## What's real vs. what's still mocked
 
