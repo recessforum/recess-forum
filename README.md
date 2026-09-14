@@ -885,7 +885,56 @@ Apple's own design — only a real device performs the CDN-based domain
 verification — so this needs a real-device test once the Team ID and
 Xcode capability are both in place.
 
-## What's real vs. what's still mocked
+### Pre-submission App Store review audit, round two (done)
+
+With the code-side fixes and Apple/Supabase configuration both done, ran a
+second, independent pass looking past the Mentodari-derived checklist for
+anything else that could cause a rejection — reasoning from Apple's actual
+guideline numbers against this app specifically, not just re-confirming
+what was already fixed.
+
+**Cleared, no action needed:**
+- **Guideline 3.1.1 (In-App Purchase)** — traced the "Become a Verified
+  Expert" flow end to end (`components/ExpertApplicationModal.tsx`,
+  `app/api/expert-applications/route.ts`, the admin approve/reject routes)
+  and grepped the whole repo for `stripe|payment|checkout|subscription|
+  paywall|iap` — there is no monetization surface anywhere in the app
+  today. This matters specifically because 3.1.1 is the guideline that got
+  Mentodari rejected before, so it needed real verification, not an
+  assumption. (Two things are planned for later — a possible subscription
+  on the Verified Expert tier, and ads roughly 6 months post-launch —
+  neither exists yet; whichever ships first needs this guideline
+  re-checked before that release, since a paid tier sold inside the app
+  would need real Apple In-App Purchase, not an external processor.)
+- **Guideline 5.1.1 (forced sign-in)** — confirmed `app/page.tsx` and
+  `app/post/[id]/page.tsx` fetch and render posts/comments with no auth
+  gate; login is only enforced at interaction points (voting, posting).
+  Browsing works fully logged out.
+- **Guideline 1.1.6/1.2 content moderation** — the violence-only automated
+  filter plus report/block/admin-review-queue is the same shape most
+  Reddit-style UGC apps ship with (human review as the backstop, not full
+  automated pre-screening of everything) — treated as normal for this
+  category, not a rejection risk on its own.
+
+**Fixed as a result of this pass:**
+- `app/privacy/page.tsx` only documented Google Sign-In and didn't mention
+  Apple Sign-In, OpenAI, or Resend at all — a real accuracy gap given
+  Apple Sign-In is a headline part of this exact submission. Added Apple
+  to the sign-in paragraph and a new "Third parties that process data on
+  our behalf" section naming Supabase, Resend, OpenAI, and Google/Apple
+  explicitly.
+- `app/post/[id]/page.tsx`'s native share path (`Share.share(...)` inside
+  the `Capacitor.isNativePlatform()` branch) had no `try/catch`, unlike
+  the `navigator.share` fallback right below it — a cancelled or failed
+  native share would throw unhandled. Wrapped it the same way.
+- `app/login/page.tsx` and `app/signup/page.tsx`'s Google/Apple sign-in
+  handlers had no error handling or loading state at all — a network
+  failure during OAuth kickoff left the button looking like it silently
+  did nothing, which is exactly the kind of thing that looks "broken" to
+  an App Review tester on a flaky connection. Both now show a spinner
+  while the OAuth redirect is being requested and a visible error message
+  if it fails, matching the existing email/password form's error handling.
+
 
 The prototype's design, copy, taxonomy, and interaction model are final
 product decisions (see `frontend/recess-forum-handoff.md` §4, §6, §8) and
@@ -931,9 +980,16 @@ were ported faithfully.
     Homeschooling as their own categories)~~ — **done** (see above).
 14. ~~Apple App Store compliance audit and fixes (report/block on author
     profiles, in-app account deletion, Terms of Use consent gate, Sign in
-    with Apple)~~ — **done, code side** (see above). Sign in with Apple
-    still needs manual Apple Developer + Supabase dashboard setup before
-    it works end-to-end.
+    with Apple), Universal Links/App Links so in-app OAuth doesn't strand
+    users in Safari, and a second independent pre-submission audit pass~~
+    — **done, fully end-to-end**: Apple Developer Portal (App ID, Services
+    ID, Sign In with Apple key) and Supabase are both configured and
+    verified working with a real Apple sign-in prompt; Xcode has the
+    Development Team attached and Associated Domains capability added.
+    Only two things remain, both outside what code/config can fix: a
+    real-device Universal Links test (Apple's Simulator can't verify
+    domain association at all), and re-running the 3.1.1 In-App Purchase
+    check whenever the planned Verified Expert subscription or ads ship.
 15. ~~Mobile app — Capacitor wrapper around the live production site,
     native share, camera/photo usage strings, app icon/launch screen,
     Android build verification~~ — **done**, iOS verified in Simulator and

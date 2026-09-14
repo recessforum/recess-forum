@@ -49,7 +49,7 @@ export default function PostDetailPage() {
     if (!post) return;
     const url = `https://www.recessforum.com/post/${post.id}`;
     if (Capacitor.isNativePlatform()) {
-      await Share.share({ title: post.title, url });
+      try { await Share.share({ title: post.title, url }); } catch { /* user cancelled */ }
       return;
     }
     if (navigator.share) {

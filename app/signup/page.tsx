@@ -13,26 +13,26 @@ export default function SignupPage() {
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(null);
 
   const inputClass = "w-full px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A] transition-colors";
   const canSubmit = email.trim() && password.length >= 6 && nickname.trim() && agreed && !sending;
 
-  const signInWithGoogle = async () => {
+  const signInWithOAuth = async (provider: "google" | "apple") => {
     if (!agreed) return;
+    setError(null);
+    setOauthLoading(provider);
     const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-  };
-
-  const signInWithApple = async () => {
-    if (!agreed) return;
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: "apple",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) throw error;
+    } catch {
+      setError("Something went wrong. Please try again.");
+      setOauthLoading(null);
+    }
   };
 
   const submit = async () => {
@@ -80,14 +80,14 @@ export default function SignupPage() {
         </span>
       </label>
 
-      <button onClick={signInWithApple} disabled={!agreed}
+      <button onClick={() => signInWithOAuth("apple")} disabled={!agreed || !!oauthLoading}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black text-white text-[14px] font-medium mb-3 disabled:opacity-40 hover:bg-[#1a1a1a] transition-colors">
-        <Apple size={16} fill="white" /> Continue with Apple
+        {oauthLoading === "apple" ? <Loader2 size={16} className="animate-spin" /> : <Apple size={16} fill="white" />} Continue with Apple
       </button>
 
-      <button onClick={signInWithGoogle} disabled={!agreed}
+      <button onClick={() => signInWithOAuth("google")} disabled={!agreed || !!oauthLoading}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-[#E6E3DA] text-[14px] font-medium text-[#1C1B19] mb-4 disabled:opacity-40 hover:bg-[#FAF9F7] transition-colors">
-        Continue with Google
+        {oauthLoading === "google" && <Loader2 size={14} className="animate-spin" />} Continue with Google
       </button>
 
       <div className="flex items-center gap-3 mb-4">

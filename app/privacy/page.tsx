@@ -30,11 +30,13 @@ export default function PrivacyPage() {
           nickname — not your real name or email — is what other users see.
         </p>
         <p>
-          <strong>Google Sign-In.</strong> If you choose to sign in with Google
-          instead, Google shares your name and email address with us, consistent
-          with the permissions you approve on Google&apos;s consent screen. We use
-          this the same way as an email/password account: to create your profile
-          and let you choose a nickname.
+          <strong>Google or Apple Sign-In.</strong> If you choose to sign in with
+          Google or Apple instead, that provider shares your name and email
+          address with us, consistent with the permissions you approve on their
+          consent screen (Apple lets you hide your real email behind a private
+          relay address instead — either way works the same for signing in). We
+          use this the same way as an email/password account: to create your
+          profile and let you choose a nickname.
         </p>
         <p>
           <strong>Content you post.</strong> Posts, comments, and votes are stored
@@ -55,6 +57,19 @@ export default function PrivacyPage() {
           displaying your posts and nickname, tallying votes and karma, reviewing
           Verified Expert applications, and sending transactional emails (like
           confirming your email address when you sign up).
+        </p>
+      </Section>
+
+      <Section title="Third parties that process data on our behalf">
+        <p>
+          We use a small number of service providers to run the forum, each of
+          which only sees the data needed to do its job: Supabase (accounts,
+          database, file storage), Resend (delivering transactional emails),
+          OpenAI (an automated check for violent content on new posts and
+          comments before they&apos;re published — it doesn&apos;t store what
+          you write), and Google or Apple (only if you choose to sign in with
+          one of them). None of these providers are permitted to use your data
+          for their own advertising.
         </p>
       </Section>
 
