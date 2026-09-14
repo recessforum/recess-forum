@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, Eye, Loader2, MapPin } from "lucide-react";
+import { Check, ChevronLeft, Eye, Loader2, MapPin, Share2 } from "lucide-react";
 import { Briefcase } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import { Share } from "@capacitor/share";
 import type { Comment, Post } from "@/lib/types";
 import { timeAgo } from "@/lib/ranking";
 import { karmaFor, roleFor, tierFor } from "@/lib/roles";
@@ -40,7 +42,26 @@ export default function PostDetailPage() {
   const [editError, setEditError] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const viewedRef = useRef(false);
+
+  const sharePost = async () => {
+    if (!post) return;
+    const url = `https://www.recessforum.com/post/${post.id}`;
+    if (Capacitor.isNativePlatform()) {
+      await Share.share({ title: post.title, url });
+      return;
+    }
+    if (navigator.share) {
+      try { await navigator.share({ title: post.title, url }); } catch { /* user cancelled */ }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch { /* clipboard permission denied — nothing more we can do */ }
+  };
 
   useEffect(() => {
     (async () => {
@@ -181,9 +202,14 @@ export default function PostDetailPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 w-full">
-      <button onClick={() => router.push("/")} className="flex items-center gap-1 text-[13px] font-medium text-[#5B584F] hover:text-[#1C1B19] mb-5">
-        <ChevronLeft size={15} /> Back
-      </button>
+      <div className="flex items-center justify-between mb-5">
+        <button onClick={() => router.push("/")} className="flex items-center gap-1 text-[13px] font-medium text-[#5B584F] hover:text-[#1C1B19]">
+          <ChevronLeft size={15} /> Back
+        </button>
+        <button onClick={sharePost} className="flex items-center gap-1.5 text-[13px] font-medium text-[#5B584F] hover:text-[#1C1B19]">
+          {shareCopied ? <><Check size={14} className="text-[#217A78]" /> Link copied</> : <><Share2 size={14} /> Share</>}
+        </button>
+      </div>
 
       <div className="flex items-center gap-1.5 mb-2">
         <TopicBadge topicId={post.topicId} onClick={() => router.push("/")} />

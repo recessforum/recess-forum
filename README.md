@@ -665,6 +665,61 @@ likely native share at minimum, mirroring Mentodari's `@capacitor/share`)
 and camera/photo-library `Info.plist` usage strings (depends on which
 Capacitor plugins end up handling avatar upload).
 
+## Mobile app — Capacitor wrapper (done, code side)
+
+Wraps the live production site as an iOS/Android app, following the same
+architecture already proven on a sibling project (Mentodari): **Capacitor**
+around the real deployed `www.recessforum.com`, not React Native, not a
+static export, and not a full native rewrite. The app is a thin native
+shell around a `WKWebView`/`WebView` pointed at the production URL
+(`capacitor.config.ts`'s `server.url`) — the Next.js app itself needed no
+changes to be wrapped, and shipping a new mobile build isn't needed to ship
+a normal site update; only native-shell changes (new plugins, icons,
+permissions) need a resubmission.
+
+`ios/` and `android/` are real native projects (`npx cap add ios` /
+`npx cap add android`), committed to the repo (build output —
+`ios/App/Pods`, `ios/App/build`, `android/app/build`, `android/.gradle` —
+is gitignored, the projects themselves are not). `mobile/www/index.html` is
+an unused placeholder Capacitor requires as a local `webDir` even though
+`server.url` means it's never actually shown.
+
+**Native functionality (Guideline 4.2, Minimum Functionality)** — added
+`@capacitor/share` and wired a native Share button onto the post detail
+page (`app/post/[id]/page.tsx`). It checks `Capacitor.isNativePlatform()`
+first so the same code works on the plain website too: native share sheet
+in the app, `navigator.share()` in browsers that support it (mobile Safari/
+Chrome), and a "copy link to clipboard" fallback everywhere else — verified
+all three states render/behave correctly, including a real bug caught
+while testing the clipboard fallback (an unhandled promise rejection when
+`clipboard.writeText` throws, e.g. no clipboard permission — now wrapped in
+`try/catch`).
+
+**Camera/photo library usage strings (`Info.plist`)** — added
+`NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` up front,
+since the existing avatar/post-photo `<input type="file" accept="image/*">`
+can trigger the OS camera/photo picker inside the webview, and a missing
+usage string there crashes the app instead of showing a permission prompt.
+
+**Verified end-to-end in the iOS Simulator**, not just "the files got
+generated": `xcodebuild -scheme App build` for `iphonesimulator` — **build
+succeeded** (Capacitor 8 resolves its plugins via Swift Package Manager, so
+no CocoaPods/`pod install` step was needed, unlike older Capacitor
+versions/Mentodari's original setup). Installed and launched the built
+`.app` with `xcrun simctl install` / `launch`, then screenshotted it with
+`xcrun simctl io screenshot` — the real production Recess Forum homepage
+rendered correctly inside the native shell, mobile drawer layout and all.
+The Android project was added the same way and structurally mirrors the
+verified iOS one, but this environment has no Android SDK installed, so an
+equivalent `gradlew assembleDebug` build wasn't run — that still needs
+verifying in an environment with Android Studio/SDK.
+
+Bundle ID: `com.recessforum.app` (matches the `com.<brand>.app` pattern
+Mentodari uses). Not done yet: app icon/launch screen art (currently
+Capacitor's default placeholder assets), and an actual App Store/Play
+Store submission (screenshots, listing copy, review notes) — this is a
+locally-verified native wrapper, not a submitted app.
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final
@@ -714,11 +769,11 @@ were ported faithfully.
     with Apple)~~ — **done, code side** (see above). Sign in with Apple
     still needs manual Apple Developer + Supabase dashboard setup before
     it works end-to-end.
-15. Mobile app — wrap the live production site with Capacitor (not React
-    Native, not a static export), following Mentodari's proven
-    architecture. Add real native functionality (native share at minimum)
-    once the shell exists, plus `Info.plist` usage strings for whichever
-    plugins end up handling avatar upload.
+15. ~~Mobile app — Capacitor wrapper around the live production site,
+    native share, camera/photo usage strings~~ — **done, code side, iOS
+    verified in Simulator** (see above). Still open: app icon/launch
+    screen art, an Android SDK build verification, and the actual App
+    Store/Play Store submission.
 16. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
     (school/IEP/discipline topics where a wrong answer causes real harm)
     and the risk of undercutting real-parent replies before the community
