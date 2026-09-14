@@ -710,9 +710,27 @@ versions/Mentodari's original setup). Installed and launched the built
 `xcrun simctl io screenshot` — the real production Recess Forum homepage
 rendered correctly inside the native shell, mobile drawer layout and all.
 The Android project was added the same way and structurally mirrors the
-verified iOS one, but this environment has no Android SDK installed, so an
-equivalent `gradlew assembleDebug` build wasn't run — that still needs
-verifying in an environment with Android Studio/SDK.
+verified iOS one. **Later verified for real** by installing a JDK and the
+Android SDK directly (no Android Studio) — a portable Temurin 21 JDK
+(Capacitor's Android module targets Java 21; a first attempt with 17 failed
+with `invalid source release: 21`), then the Android `cmdline-tools`
+(`sdkmanager --licenses`, then `platform-tools`, `platforms;android-36`,
+`build-tools;36.0.0`), pointed at via `android/local.properties`
+(gitignored, machine-specific). `./gradlew assembleDebug` — **build
+successful**, producing a real signed debug APK
+(`android/app/build/outputs/apk/debug/app-debug.apk`); `aapt dump badging`
+against it confirmed the package name (`com.recessforum.app`), app label
+("Recess Forum"), min/target SDK, and the `INTERNET` permission the webview
+needs to reach `recessforum.com` are all correct. An actual emulator boot
+(for iOS-Simulator-equivalent visual proof) was attempted — AVD created,
+system image installed — but this machine's available disk space (a few
+GB) is below what even a shrunk userdata partition needs (Android wants
+7+GB regardless of the configured partition size, a known emulator
+quirk/limit, not something fixable via `-partition-size` or
+`config.ini`), so it was abandoned rather than fought further; the
+emulator and system image downloads (~5GB) were removed afterward since
+they weren't usable here, keeping just the SDK components the build
+itself needs.
 
 Bundle ID: `com.recessforum.app` (matches the `com.<brand>.app` pattern
 Mentodari uses). Not done yet: an actual App Store/Play Store submission
@@ -822,10 +840,12 @@ were ported faithfully.
     still needs manual Apple Developer + Supabase dashboard setup before
     it works end-to-end.
 15. ~~Mobile app — Capacitor wrapper around the live production site,
-    native share, camera/photo usage strings~~ — **done, code side, iOS
-    verified in Simulator** (see above). Still open: app icon/launch
-    screen art, an Android SDK build verification, and the actual App
-    Store/Play Store submission.
+    native share, camera/photo usage strings, app icon/launch screen,
+    Android build verification~~ — **done**, iOS verified in Simulator and
+    Android verified via a real `gradlew assembleDebug` build (see above).
+    Still open: an actual Android emulator boot (blocked by this
+    environment's disk space, not by anything in the app itself), and the
+    actual App Store/Play Store submission.
 16. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
     (school/IEP/discipline topics where a wrong answer causes real harm)
     and the risk of undercutting real-parent replies before the community
