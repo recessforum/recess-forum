@@ -790,6 +790,83 @@ device in 2026 actually uses, is correct — background and foreground
 layers composite properly). Not fixed, since it only affects devices
 Android has not shipped in 8+ years.
 
+### OAuth sign-in inside the app — Universal Links / App Links (done, code side)
+
+Discovered while explaining how to set up Sign in with Apple: OAuth
+sign-in (Google, and the new Apple button) doesn't actually work usably
+*inside the wrapped app* without this. Capacitor's own navigation-handling
+code
+(`node_modules/@capacitor/ios/Capacitor/Capacitor/WebViewDelegationHandler.swift`)
+confirms it — a top-level navigation to a host outside
+`capacitor.config.ts`'s `allowNavigation` (which `appleid.apple.com` and
+`accounts.google.com` both are) gets cancelled in the app's webview and
+handed to `UIApplication.shared.open()`, i.e. kicked out to system Safari.
+The user *can* complete sign-in there, but Supabase's redirect back to
+`https://www.recessforum.com/auth/callback` then just loads in Safari too
+— stranding them logged into the website in Safari while the app itself
+stays logged out, with no way back short of manually switching apps. This
+was a pre-existing gap in the already-shipped Google sign-in, not
+something the new Apple button introduced — it just hadn't been tested
+inside the native wrapper before.
+
+The fix is Universal Links (iOS) / App Links (Android): register
+`/auth/callback` as a link the OS hands to the app instead of the browser,
+then have the app's own JS point its webview at that URL when it arrives.
+Three pieces, all now in place:
+
+1. **Domain association files**, served from the real site so Apple/Google
+   can verify the app is allowed to claim this domain:
+   - `app/.well-known/apple-app-site-association/route.ts` — a route
+     handler, not a static file, because the path has no extension (that's
+     required, not a mistake) and a route handler makes it trivial to get
+     the `application/json` content-type right. **Needs a manual edit**:
+     the `TEAM_ID` placeholder at the top must become the real 10-character
+     Apple Developer Team ID once that's known — until then this file
+     doesn't associate anything.
+   - `public/.well-known/assetlinks.json` — includes the SHA256
+     certificate fingerprint of the debug keystore that was auto-created
+     while verifying the Android build (`~/.android/debug.keystore`, via
+     `keytool -list -v`). **Also needs a manual addition later**: once a
+     real release signing key exists for the Play Store, its SHA256
+     fingerprint needs to be added to the `sha256_cert_fingerprints` array
+     alongside the debug one — release-signed builds won't verify against
+     only the debug fingerprint.
+2. **Native declarations** that a link to `/auth/callback` should try the
+   app first:
+   - iOS: `ios/App/App/App.entitlements` (new file, `applinks:` for both
+     `recessforum.com` and `www.recessforum.com`), wired into
+     `App.xcodeproj/project.pbxproj` via `CODE_SIGN_ENTITLEMENTS` on both
+     the Debug and Release build configurations.
+   - Android: an `android:autoVerify="true"` intent-filter added to
+     `MainActivity` in `AndroidManifest.xml` for `https://` +
+     `(www.)recessforum.com/auth/callback` — verified compiled correctly
+     into the built APK via `aapt dump xmltree`.
+3. **The actual hand-off**, since Capacitor only delivers a matched link as
+   an `appUrlOpen` JS event — it doesn't navigate the webview itself. Added
+   a listener in `lib/auth-context.tsx` (already a client-side, app-wide
+   mounted provider) that does `window.location.href = url` on that event,
+   gated by `Capacitor.isNativePlatform()` so it's a no-op on the plain
+   website.
+
+**What could and couldn't be verified here.** The `.well-known` routes
+were confirmed serving correct JSON locally. The Android manifest change
+was confirmed correctly compiled into a real `gradlew assembleDebug` APK.
+The iOS entitlements file turned up a real limitation while wiring it in:
+rebuilding after adding `CODE_SIGN_ENTITLEMENTS` still produced an *empty*
+entitlements blob in the signed binary (`codesign -d --entitlements`
+confirmed it) — because this project has automatic signing with no real
+Apple Developer Team selected, so Xcode has no provisioning profile to
+validate the Associated Domains capability against, and silently drops it.
+**Manual step required**: open `ios/App/App.xcodeproj` in Xcode, select a
+real Development Team under Signing & Capabilities, and add the
+"Associated Domains" capability there (Xcode will pick up the
+already-correct `App.entitlements` file and register the capability with
+Apple automatically once a team is attached). Beyond that, Universal Links
+fundamentally **cannot be verified in the iOS Simulator** at all, by
+Apple's own design — only a real device performs the CDN-based domain
+verification — so this needs a real-device test once the Team ID and
+Xcode capability are both in place.
+
 ## What's real vs. what's still mocked
 
 The prototype's design, copy, taxonomy, and interaction model are final

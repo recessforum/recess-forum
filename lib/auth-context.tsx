@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
 import { createClient } from "./supabase/client";
 
 export interface AuthProfile {
@@ -44,6 +46,19 @@ export function AuthProvider({ initialProfile, children }: { initialProfile: Aut
       setLoading(false);
     });
     return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // A Universal Link (iOS) / App Link (Android) tap on /auth/callback opens
+  // this app instead of the browser (see /.well-known/apple-app-site-association
+  // and /.well-known/assetlinks.json), but Capacitor only delivers that as an
+  // `appUrlOpen` event — the app's own webview still needs to be pointed at
+  // the URL itself to actually complete the OAuth code exchange.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listenerPromise = CapacitorApp.addListener("appUrlOpen", ({ url }) => {
+      window.location.href = url;
+    });
+    return () => { listenerPromise.then((l) => l.remove()); };
   }, []);
 
   const refreshProfile = async () => {
