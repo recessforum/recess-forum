@@ -997,11 +997,24 @@ were ported faithfully.
     Still open: an actual Android emulator boot (blocked by this
     environment's disk space, not by anything in the app itself), and the
     actual App Store/Play Store submission.
-16. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
+16. ~~App Store Connect submission setup — app record, Sign in with Apple
+    end-to-end, iPhone screenshots, App Information (subtitle, category,
+    content rights), Age Rating questionnaire, App Review Information
+    (working demo account, contact, reviewer notes), Description/
+    Keywords/Support URL~~ — **done**. Along the way: restricted
+    `TARGETED_DEVICE_FAMILY` to iPhone-only (was Capacitor's default
+    universal iPhone+iPad, never actually decided on or tested on iPad),
+    added `ITSAppUsesNonExemptEncryption = false` to Info.plist (standard
+    HTTPS only, so this exempts the app from export-compliance docs on
+    every build upload), and added a `/support` page (Apple requires a
+    working Support URL; the site didn't have one). Still open: build
+    upload (no `.ipa` attached to the version yet) and the actual "Submit
+    for Review" click.
+17. AI-assisted Q&A — deliberately on hold. The forum's early-stage risk
     (school/IEP/discipline topics where a wrong answer causes real harm)
     and the risk of undercutting real-parent replies before the community
     has any critical mass outweigh the payoff right now; revisit once
     there's an established base of human answers, possibly scoped to
     "AI answers only when no human has yet."
-17. Everything else (a moderation action tied to a report — e.g. deleting
+18. Everything else (a moderation action tied to a report — e.g. deleting
     the reported content directly from `/admin`) — not designed yet.
