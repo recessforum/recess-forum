@@ -251,23 +251,26 @@ export default function PostDetailPage() {
       </div>
 
       {post.circleId && post.circleName && (
-        <div className="flex items-center gap-3 bg-[#F5EEDC] px-3 py-2.5 mb-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 bg-[#F5EEDC] px-3 py-3 mb-3">
           <Users size={16} className="text-[#7A5F1E] shrink-0" />
-          <div className="min-w-0 flex-1 text-[13px] text-[#5B584F]">
-            This post is from the{" "}
-            <button onClick={() => router.push(`/circles/${post.circleId}`)} className="font-semibold text-[#7A5F1E] hover:underline">
-              {post.circleName}
-            </button>{" "}
-            circle
-            {circle && <span className="text-[#9A968A]"> · {circle.memberCount} member{circle.memberCount === 1 ? "" : "s"}</span>}
+          <div className="min-w-0 flex-1 basis-56 text-[13px] text-[#5B584F]">
+            <div>
+              This post is from the{" "}
+              <button onClick={() => router.push(`/circles/${post.circleId}`)} className="font-semibold text-[#7A5F1E] hover:underline">
+                {post.circleName}
+              </button>{" "}
+              circle
+              {circle && <span className="text-[#9A968A]"> · {circle.memberCount} member{circle.memberCount === 1 ? "" : "s"}</span>}
+            </div>
+            {circle && !isMember && <div className="mt-0.5 font-medium text-[#3A382F]">Would you like to join this circle?</div>}
           </div>
           {circle && !isMember && (
             <button disabled={circleBusy} onClick={joinCircle}
-              className="shrink-0 px-3 py-1.5 text-[13px] font-semibold bg-[#26364A] text-white hover:bg-[#1e2c3d] transition-colors disabled:opacity-40">
+              className="shrink-0 px-4 py-2 text-[13px] font-semibold bg-[#26364A] text-white hover:bg-[#1e2c3d] transition-colors disabled:opacity-40">
               Join circle
             </button>
           )}
-          {circle && isMember && <span className="shrink-0 text-[12px] font-medium text-[#217A78] flex items-center gap-1"><Check size={13} /> Member</span>}
+          {circle && isMember && <span className="shrink-0 text-[12px] font-medium text-[#217A78] flex items-center gap-1"><Check size={13} /> You&apos;re a member</span>}
         </div>
       )}
       <div className="flex items-center gap-1.5 mb-2">
