@@ -41,6 +41,34 @@ and search with both topic and circle badges, confirmed a second
 non-member account sees "Join circle" (no post button) and — after
 joining — gets "Leave circle" + a working "New post" button.
 
+**Pinned post, circle context, editable topic.** A circle's creator can pin one
+of their own posts in that circle (button on the post page, or on the circle
+page); the pinned post always sorts first on `/circles/[id]`. It's stored as
+`circles.pinned_post_id` (`on delete set null`, so deleting the post just
+un-pins it) and written through `PUT /api/circles/[id]/pin`, which checks the
+caller is the creator and the post is theirs and in that circle — the update
+policy on `circles` enforces the same thing. Circle posts in the feed carry a
+gold "Circle · name" badge, and the post page shows a "This post is from the
+… circle" banner with a Join circle button (logged-out users get the sign-in
+prompt). The author's Edit form on a post now also changes its topic
+(`PATCH /api/posts/[id]` accepts an optional `topicId`, validated against
+`lib/taxonomy.ts`).
+
+To apply on a live database, run in the Supabase SQL Editor (before deploying
+the code — the circle queries select `pinned_post_id`):
+
+```sql
+alter table circles add column pinned_post_id uuid references posts(id) on delete set null;
+create policy "creators update their circles" on circles for update
+  using (auth.uid() = created_by)
+  with check (
+    auth.uid() = created_by
+    and (pinned_post_id is null or exists (
+      select 1 from public.posts p
+      where p.id = circles.pinned_post_id and p.circle_id = circles.id and p.author_id = auth.uid()))
+  );
+```
+
 ## Running it
 
 ```bash

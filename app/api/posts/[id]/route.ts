@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deletePost, getComments, getPost, getVoteDirs, updatePost } from "@/lib/db";
 import { containsViolentContent } from "@/lib/moderation";
+import { topicById } from "@/lib/taxonomy";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -28,8 +29,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!post) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (post.authorId !== user.id) return NextResponse.json({ error: "you can only edit your own posts" }, { status: 403 });
 
-  const data = (await req.json()) as { title: string; body: string | null };
+  const data = (await req.json()) as { title: string; body: string | null; topicId?: string };
   if (!data.title?.trim()) return NextResponse.json({ error: "title is required" }, { status: 400 });
+
+  const topicId = data.topicId ?? post.topicId;
+  if (!topicById(topicId)) return NextResponse.json({ error: "unknown topic" }, { status: 400 });
 
   const body = data.body?.trim() || null;
   if (await containsViolentContent(`${data.title}\n\n${body ?? ""}`)) {
@@ -39,7 +43,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     );
   }
 
-  const updated = await updatePost(supabase, id, { title: data.title.trim(), body });
+  const updated = await updatePost(supabase, id, { title: data.title.trim(), body, topicId });
   return NextResponse.json({ post: updated });
 }
 

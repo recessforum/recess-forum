@@ -145,6 +145,12 @@ create index blocks_blocker_id_idx on blocks(blocker_id);
 alter table posts add column circle_id uuid references circles(id) on delete set null;
 create index posts_circle_id_idx on posts(circle_id);
 
+-- One post the circle's creator can pin to the top of the circle page. Only
+-- ever points at a post in that same circle written by the creator (enforced
+-- by the update policy below, and again in app/api/circles/[id]/pin).
+-- on delete set null so deleting the pinned post just un-pins it.
+alter table circles add column pinned_post_id uuid references posts(id) on delete set null;
+
 -- Auto-create a profile row when a user signs up, so `profiles` never lags
 -- behind `auth.users`. Picks up the nickname passed as signup metadata
 -- (`options.data.display_name`, see app/signup/page.tsx), falling back to a
@@ -314,6 +320,18 @@ create policy "authenticated users create comments as themselves" on comments fo
 
 create policy "circles are publicly readable" on circles for select using (true);
 create policy "authenticated users create circles as themselves" on circles for insert with check (auth.uid() = created_by);
+create policy "creators update their circles" on circles for update
+  using (auth.uid() = created_by)
+  with check (
+    auth.uid() = created_by
+    and (
+      pinned_post_id is null
+      or exists (
+        select 1 from public.posts p
+        where p.id = circles.pinned_post_id and p.circle_id = circles.id and p.author_id = auth.uid()
+      )
+    )
+  );
 
 create policy "circle memberships are publicly readable" on circle_memberships for select using (true);
 create policy "users join circles as themselves" on circle_memberships for insert with check (auth.uid() = user_id);

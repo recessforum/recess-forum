@@ -3,15 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Check, ChevronLeft, Eye, Loader2, MapPin, Share2 } from "lucide-react";
+import { Check, ChevronLeft, Eye, Loader2, MapPin, Pin, PinOff, Share2, Users } from "lucide-react";
 import { Briefcase } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
-import type { Comment, Post } from "@/lib/types";
+import type { Circle, Comment, Post } from "@/lib/types";
 import { timeAgo } from "@/lib/ranking";
 import { karmaFor, roleFor, tierFor } from "@/lib/roles";
 import { TopicBadge } from "@/components/TopicBadge";
 import { CircleBadge } from "@/components/CircleBadge";
+import { TopicSelect } from "@/components/TopicSelect";
+import { LoginRequiredModal } from "@/components/LoginRequiredModal";
 import { VoteControl } from "@/components/VoteControl";
 import { AuthorBadges } from "@/components/Badges";
 import { Avatar } from "@/components/Avatar";
@@ -39,6 +41,11 @@ export default function PostDetailPage() {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
+  const [editTopicId, setEditTopicId] = useState("");
+  const [circle, setCircle] = useState<Circle | null>(null);
+  const [isMember, setIsMember] = useState(false);
+  const [circleBusy, setCircleBusy] = useState(false);
+  const [showLoginRequired, setShowLoginRequired] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -73,6 +80,12 @@ export default function PostDetailPage() {
       const data = await postRes.json();
       const bootstrap = await bootstrapRes.json();
       setPost(data.post);
+      if (data.post.circleId) {
+        fetch(`/api/circles/${data.post.circleId}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((c) => { if (c) { setCircle(c.circle); setIsMember(c.isMember); } })
+          .catch(() => {});
+      }
       setComments(data.comments);
       setPostVoteDirs(data.voteDirs.posts);
       setCommentVoteDirs(data.voteDirs.comments);
@@ -136,8 +149,34 @@ export default function PostDetailPage() {
     setCommentVoteDirs((s) => ({ ...s, [data.comment.id]: 1 }));
   };
 
+  const joinCircle = async () => {
+    if (!post?.circleId) return;
+    if (!profile) { setShowLoginRequired(true); return; }
+    setCircleBusy(true);
+    const res = await fetch(`/api/circles/${post.circleId}/join`, { method: "POST" });
+    if (res.ok) {
+      setIsMember(true);
+      setCircle((c) => c && { ...c, memberCount: c.memberCount + 1 });
+    }
+    setCircleBusy(false);
+  };
+
+  const togglePin = async () => {
+    if (!post?.circleId || !circle) return;
+    const pinning = circle.pinnedPostId !== post.id;
+    setCircleBusy(true);
+    const res = await fetch(`/api/circles/${post.circleId}/pin`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postId: pinning ? post.id : null }),
+    });
+    if (res.ok) setCircle((c) => c && { ...c, pinnedPostId: pinning ? post.id : null });
+    setCircleBusy(false);
+  };
+
   const startEditing = () => {
     if (!post) return;
+    setEditTopicId(post.topicId);
     setEditTitle(post.title);
     setEditBody(post.body ?? "");
     setEditError(null);
@@ -151,7 +190,7 @@ export default function PostDetailPage() {
     const res = await fetch(`/api/posts/${post.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: editTitle.trim(), body: editBody.trim() || null }),
+      body: JSON.stringify({ title: editTitle.trim(), body: editBody.trim() || null, topicId: editTopicId }),
     });
     const data = await res.json();
     setEditSaving(false);
@@ -211,6 +250,26 @@ export default function PostDetailPage() {
         </button>
       </div>
 
+      {post.circleId && post.circleName && (
+        <div className="flex items-center gap-3 bg-[#F5EEDC] px-3 py-2.5 mb-3">
+          <Users size={16} className="text-[#7A5F1E] shrink-0" />
+          <div className="min-w-0 flex-1 text-[13px] text-[#5B584F]">
+            This post is from the{" "}
+            <button onClick={() => router.push(`/circles/${post.circleId}`)} className="font-semibold text-[#7A5F1E] hover:underline">
+              {post.circleName}
+            </button>{" "}
+            circle
+            {circle && <span className="text-[#9A968A]"> · {circle.memberCount} member{circle.memberCount === 1 ? "" : "s"}</span>}
+          </div>
+          {circle && !isMember && (
+            <button disabled={circleBusy} onClick={joinCircle}
+              className="shrink-0 px-3 py-1.5 text-[13px] font-semibold bg-[#26364A] text-white hover:bg-[#1e2c3d] transition-colors disabled:opacity-40">
+              Join circle
+            </button>
+          )}
+          {circle && isMember && <span className="shrink-0 text-[12px] font-medium text-[#217A78] flex items-center gap-1"><Check size={13} /> Member</span>}
+        </div>
+      )}
       <div className="flex items-center gap-1.5 mb-2">
         <TopicBadge topicId={post.topicId} onClick={() => router.push("/")} />
         {post.circleId && post.circleName && <CircleBadge circleId={post.circleId} circleName={post.circleName} />}
@@ -236,6 +295,12 @@ export default function PostDetailPage() {
         {profile?.id === post.authorId ? (
           <>
             <button onClick={startEditing} className="text-[12px] font-medium text-[#9A968A] hover:text-[#26364A]">Edit</button>
+            {circle && circle.createdBy === profile.id && (
+              <button disabled={circleBusy} onClick={togglePin}
+                className="text-[12px] font-medium text-[#9A968A] hover:text-[#26364A] disabled:opacity-40 inline-flex items-center gap-1">
+                {circle.pinnedPostId === post.id ? <><PinOff size={12} /> Unpin</> : <><Pin size={12} /> Pin to circle</>}
+              </button>
+            )}
             <button disabled={deleting} onClick={deletePost} className="text-[12px] font-medium text-[#9A968A] hover:text-[#B23B3B] disabled:opacity-40">
               {deleting ? "Deleting..." : "Delete"}
             </button>
@@ -247,6 +312,8 @@ export default function PostDetailPage() {
       </div>
       {editing ? (
         <div className="mb-4">
+          <label className="text-[12px] font-medium text-[#5B584F] block mb-1.5">Topic</label>
+          <div className="mb-3"><TopicSelect value={editTopicId} onChange={setEditTopicId} /></div>
           <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={5} placeholder="Details (optional)"
             className="w-full px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[15px] outline-none focus:border-[#26364A] resize-none mb-2" />
           {editError && <p className="text-[13px] text-[#B23B3B] mb-2">{editError}</p>}
@@ -318,6 +385,7 @@ export default function PostDetailPage() {
           </p>
         )}
       </div>
+      {showLoginRequired && <LoginRequiredModal onClose={() => setShowLoginRequired(false)} />}
     </div>
   );
 }

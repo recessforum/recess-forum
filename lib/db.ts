@@ -171,11 +171,11 @@ export async function createPost(
 export async function updatePost(
   supabase: SupabaseClient,
   id: string,
-  input: { title: string; body: string | null }
+  input: { title: string; body: string | null; topicId: string }
 ): Promise<Post> {
   const { data, error } = await supabase
     .from("posts")
-    .update({ title: input.title, body: input.body })
+    .update({ title: input.title, body: input.body, topic_id: input.topicId })
     .eq("id", id)
     .select(POST_SELECT)
     .single();
@@ -347,10 +347,11 @@ interface CircleRow {
   state: string | null;
   created_by: string;
   created_at: string;
+  pinned_post_id: string | null;
   circle_memberships: { count: number }[] | null;
 }
 
-const CIRCLE_SELECT = "id, name, description, state, created_by, created_at, circle_memberships(count)";
+const CIRCLE_SELECT = "id, name, description, state, created_by, created_at, pinned_post_id, circle_memberships(count)";
 
 function toCircle(row: CircleRow): Circle {
   return {
@@ -359,6 +360,7 @@ function toCircle(row: CircleRow): Circle {
     description: row.description,
     state: row.state,
     createdBy: row.created_by,
+    pinnedPostId: row.pinned_post_id,
     memberCount: row.circle_memberships?.[0]?.count ?? 0,
     createdAt: new Date(row.created_at).getTime(),
   };
@@ -388,6 +390,12 @@ export async function createCircle(
     .single();
   if (error) throw error;
   return toCircle(data as unknown as CircleRow);
+}
+
+export async function setCirclePin(supabase: SupabaseClient, circleId: string, postId: string | null): Promise<void> {
+  const { data, error } = await supabase.from("circles").update({ pinned_post_id: postId }).eq("id", circleId).select("id");
+  if (error) throw error;
+  if (!data?.length) throw new Error("circle not found or not authorized");
 }
 
 export async function isCircleMember(supabase: SupabaseClient, circleId: string, userId: string): Promise<boolean> {

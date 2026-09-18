@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, MapPin, MessageSquare } from "lucide-react";
+import { Eye, MapPin, MessageSquare, Pin } from "lucide-react";
 import type { Post, Role, Tier } from "@/lib/types";
 import { timeAgo } from "@/lib/ranking";
 import { VoteControl } from "./VoteControl";
@@ -21,6 +21,7 @@ export function PostRow({
   dir,
   onTopic,
   badgesFor,
+  pinned = false,
 }: {
   post: Post;
   commentCount: number;
@@ -28,6 +29,7 @@ export function PostRow({
   dir: number;
   onTopic: (topicId: string) => void;
   badgesFor: (post: Post) => { tier: TierWithIcon; role: Role | null };
+  pinned?: boolean;
 }) {
   const router = useRouter();
   return (
@@ -36,7 +38,12 @@ export function PostRow({
         <VoteControl score={post.score} dir={dir} onVote={(d) => onVote(post.id, d)} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 mb-1.5">
+        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+          {pinned && (
+            <span className="text-[12px] font-medium px-2 py-0.5 rounded-sm inline-flex items-center gap-1 bg-[#26364A] text-white">
+              <Pin size={11} /> Pinned
+            </span>
+          )}
           <TopicBadge topicId={post.topicId} onClick={(e) => { e.stopPropagation(); onTopic(post.topicId); }} />
           {post.circleId && post.circleName && <CircleBadge circleId={post.circleId} circleName={post.circleName} />}
         </div>

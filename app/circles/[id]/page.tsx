@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, Loader2, MapPin, Plus, Users } from "lucide-react";
+import { ChevronLeft, Loader2, MapPin, Pin, PinOff, Plus, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { roleFor, tierFor } from "@/lib/roles";
 import type { Circle, Comment, Post, Promo } from "@/lib/types";
@@ -53,6 +53,17 @@ export default function CircleDetailPage() {
     setJoining(false);
   };
 
+  const togglePin = async (postId: string) => {
+    if (!circle) return;
+    const pinning = circle.pinnedPostId !== postId;
+    const res = await fetch(`/api/circles/${id}/pin`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postId: pinning ? postId : null }),
+    });
+    if (res.ok) setCircle((c) => c && { ...c, pinnedPostId: pinning ? postId : null });
+  };
+
   const handleVotePost = async (postId: string, dir: 1 | -1) => {
     if (!profile) { router.push("/login"); return; }
     const prevDir = postVoteDirs[postId] || 0;
@@ -101,7 +112,12 @@ export default function CircleDetailPage() {
     );
   }
 
-  const sortedPosts = [...posts].sort((a, b) => b.createdAt - a.createdAt);
+  const sortedPosts = [...posts].sort((a, b) => {
+    if (a.id === circle.pinnedPostId) return -1;
+    if (b.id === circle.pinnedPostId) return 1;
+    return b.createdAt - a.createdAt;
+  });
+  const isCreator = !!profile && profile.id === circle.createdBy;
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 w-full">
@@ -144,8 +160,16 @@ export default function CircleDetailPage() {
         <p className="text-[14px] text-[#9A968A] italic">No posts in this circle yet.</p>
       ) : (
         sortedPosts.map((p) => (
-          <PostRow key={p.id} post={p} commentCount={(allComments[p.id] || []).length}
-            onVote={handleVotePost} dir={postVoteDirs[p.id] || 0} onTopic={() => router.push("/")} badgesFor={badgesFor} />
+          <div key={p.id} className="relative">
+            <PostRow post={p} commentCount={(allComments[p.id] || []).length} pinned={p.id === circle.pinnedPostId}
+              onVote={handleVotePost} dir={postVoteDirs[p.id] || 0} onTopic={() => router.push("/")} badgesFor={badgesFor} />
+            {isCreator && p.authorId === profile.id && (
+              <button onClick={() => togglePin(p.id)}
+                className="absolute right-0 top-3 text-[12px] font-medium text-[#9A968A] hover:text-[#26364A] inline-flex items-center gap-1">
+                {p.id === circle.pinnedPostId ? <><PinOff size={12} /> Unpin</> : <><Pin size={12} /> Pin</>}
+              </button>
+            )}
+          </div>
         ))
       )}
 

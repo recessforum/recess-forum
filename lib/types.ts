@@ -31,6 +31,7 @@ export interface Circle {
   description: string;
   state: string | null;
   createdBy: string;
+  pinnedPostId: string | null;
   memberCount: number;
   createdAt: number;
 }
