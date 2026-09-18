@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { notifyAdminOfExpertApplication } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
@@ -31,5 +32,12 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await notifyAdminOfExpertApplication(supabase, {
+    applicantId: user.id,
+    expertType: data.expertType,
+    credentialInfo: data.credentialInfo.trim(),
+    hasFile: !!data.filePath,
+  });
   return NextResponse.json({ application });
 }

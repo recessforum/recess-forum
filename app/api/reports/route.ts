@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createReport } from "@/lib/db";
+import { notifyAdminOfReport } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
@@ -13,5 +14,6 @@ export async function POST(req: NextRequest) {
   }
 
   await createReport(supabase, { targetType: data.targetType, targetId: data.targetId, reason: data.reason.trim() }, user.id);
+  await notifyAdminOfReport(supabase, { reporterId: user.id, targetType: data.targetType, reason: data.reason.trim() });
   return NextResponse.json({ ok: true });
 }

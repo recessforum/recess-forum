@@ -64,3 +64,60 @@ export async function notifyOnComment(
     console.error("notifyOnComment failed", err);
   }
 }
+
+const ADMIN_NOTIFY_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || "recessforum@gmail.com";
+const ADMIN_URL = "https://www.recessforum.com/admin";
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+async function displayNameOf(supabase: SupabaseClient, userId: string): Promise<string> {
+  const { data } = await supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle();
+  return data?.display_name ?? "A user";
+}
+
+/** Tells the admin mailbox a new Verified Expert application is waiting. Best-effort, never throws. */
+export async function notifyAdminOfExpertApplication(
+  supabase: SupabaseClient,
+  params: { applicantId: string; expertType: string; credentialInfo: string; hasFile: boolean }
+): Promise<void> {
+  try {
+    const name = escapeHtml(await displayNameOf(supabase, params.applicantId));
+    const type = escapeHtml(params.expertType);
+    await sendEmail({
+      to: ADMIN_NOTIFY_EMAIL,
+      subject: `New Verified Expert application from ${name}`,
+      html: `
+        <p><strong>${name}</strong> applied to be a Verified Expert (${type}).</p>
+        <p style="white-space:pre-wrap">${escapeHtml(params.credentialInfo)}</p>
+        <p>${params.hasFile ? "A credential file is attached to the application." : "No credential file was uploaded."}</p>
+        <p><a href="${ADMIN_URL}">Review it in the admin page</a></p>
+      `,
+    });
+  } catch (err) {
+    console.error("notifyAdminOfExpertApplication failed", err);
+  }
+}
+
+/** Tells the admin mailbox a new report is waiting. Best-effort, never throws. */
+export async function notifyAdminOfReport(
+  supabase: SupabaseClient,
+  params: { reporterId: string; targetType: string; reason: string }
+): Promise<void> {
+  try {
+    const reporter = escapeHtml(await displayNameOf(supabase, params.reporterId));
+    const target = escapeHtml(params.targetType);
+    await sendEmail({
+      to: ADMIN_NOTIFY_EMAIL,
+      subject: `New report: a ${target} was reported`,
+      html: `
+        <p><strong>${reporter}</strong> reported a ${target}.</p>
+        <p>Reason: ${escapeHtml(params.reason)}</p>
+        <p><a href="${ADMIN_URL}">Review it in the admin page</a></p>
+      `,
+    });
+  } catch (err) {
+    console.error("notifyAdminOfReport failed", err);
+  }
+}
