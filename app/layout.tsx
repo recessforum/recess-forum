@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.recessforum.com"),
   title: "Recess Forum",
   description: "A discussion forum for parents navigating their kids' education.",
 };

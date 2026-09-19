@@ -69,6 +69,18 @@ create policy "creators update their circles" on circles for update
   );
 ```
 
+## Sharing (done)
+
+Any post can be shared from the feed (icon on each row) and from the post page
+("Share" / "Share this post"). `lib/share.ts` uses the OS share sheet in the
+native apps (`@capacitor/share`) and on mobile browsers (`navigator.share`),
+and falls back to copying the link on desktop. Shared links unfurl properly:
+`app/post/[id]/layout.tsx` sets the page title/description/Open Graph tags from
+the post, and `app/post/[id]/opengraph-image.tsx` renders a 1200x630 card
+(topic or circle, title, site name). Logged-out visitors who land on a post get
+a "Found this helpful? Sign up free" card so shares can convert into signups.
+The card font only covers Latin text, so non-English titles won't render there.
+
 ## Running it
 
 ```bash

@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Check, ChevronLeft, Eye, Loader2, MapPin, Pin, PinOff, Share2, Users } from "lucide-react";
 import { Briefcase } from "lucide-react";
-import { Capacitor } from "@capacitor/core";
-import { Share } from "@capacitor/share";
 import type { Circle, Comment, Post } from "@/lib/types";
 import { timeAgo } from "@/lib/ranking";
 import { karmaFor, roleFor, tierFor } from "@/lib/roles";
@@ -20,6 +18,7 @@ import { Avatar } from "@/components/Avatar";
 import { AuthorMenu } from "@/components/AuthorMenu";
 import { CommentNode } from "@/components/CommentNode";
 import { useAuth } from "@/lib/auth-context";
+import { sharePost as sharePostLink } from "@/lib/share";
 
 export default function PostDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -54,20 +53,10 @@ export default function PostDetailPage() {
 
   const sharePost = async () => {
     if (!post) return;
-    const url = `https://www.recessforum.com/post/${post.id}`;
-    if (Capacitor.isNativePlatform()) {
-      try { await Share.share({ title: post.title, url }); } catch { /* user cancelled */ }
-      return;
-    }
-    if (navigator.share) {
-      try { await navigator.share({ title: post.title, url }); } catch { /* user cancelled */ }
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(url);
+    if ((await sharePostLink(post)) === "copied") {
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 2000);
-    } catch { /* clipboard permission denied — nothing more we can do */ }
+    }
   };
 
   useEffect(() => {
@@ -346,7 +335,23 @@ export default function PostDetailPage() {
       )}
       <div className="flex items-center gap-4 pb-6 mb-6 border-b border-[#E6E3DA]">
         <VoteControl vertical={false} score={post.score} dir={postVoteDirs[post.id] || 0} onVote={(d) => handleVotePost(post.id, d)} />
+        <button onClick={sharePost} className="flex items-center gap-1.5 text-[13px] font-medium text-[#5B584F] hover:text-[#26364A] transition-colors">
+          {shareCopied ? <><Check size={14} className="text-[#217A78]" /> Link copied</> : <><Share2 size={14} /> Share this post</>}
+        </button>
       </div>
+
+      {!profile && (
+        <div className="bg-[#F5EEDC] px-4 py-4 mb-6">
+          <p className="text-[14px] font-semibold text-[#1C1B19] mb-1">Found this helpful?</p>
+          <p className="text-[13px] text-[#5B584F] mb-3">
+            Recess Forum is a free community where parents share what has worked for their kids&apos; education. Join to reply, vote, and ask your own questions.
+          </p>
+          <div className="flex gap-2">
+            <button onClick={() => router.push("/signup")} className="px-4 py-2 text-[13px] font-semibold bg-[#26364A] text-white hover:bg-[#1e2c3d] transition-colors">Sign up free</button>
+            <button onClick={() => router.push("/login")} className="px-4 py-2 text-[13px] font-medium text-[#5B584F] hover:text-[#1C1B19] transition-colors">Log in</button>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-[15px] font-semibold text-[#1C1B19]">

@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, MapPin, MessageSquare, Pin } from "lucide-react";
+import { useState } from "react";
+import { Check, Eye, MapPin, MessageSquare, Pin, Share2 } from "lucide-react";
 import type { Post, Role, Tier } from "@/lib/types";
 import { timeAgo } from "@/lib/ranking";
+import { sharePost } from "@/lib/share";
 import { VoteControl } from "./VoteControl";
 import { TopicBadge } from "./TopicBadge";
 import { CircleBadge } from "./CircleBadge";
@@ -32,6 +34,14 @@ export function PostRow({
   pinned?: boolean;
 }) {
   const router = useRouter();
+  const [copied, setCopied] = useState(false);
+  const share = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if ((await sharePost(post)) === "copied") {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
   return (
     <div className="flex gap-4 py-4 border-b border-[#E6E3DA] cursor-pointer group" onClick={() => router.push(`/post/${post.id}`)}>
       <div className="shrink-0 pt-0.5">
@@ -80,6 +90,10 @@ export function PostRow({
           <span className="flex items-center gap-1">
             <MessageSquare size={12} /> {commentCount}
           </span>
+          <button onClick={share} title="Share this post" aria-label="Share this post"
+            className="flex items-center gap-1 hover:text-[#26364A] transition-colors">
+            {copied ? <><Check size={12} className="text-[#217A78]" /> Copied</> : <Share2 size={12} />}
+          </button>
         </div>
       </div>
     </div>
