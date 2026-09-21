@@ -9,7 +9,9 @@ import { createClient } from "@/lib/supabase/client";
 import type { Promo } from "@/lib/types";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50MB — the Supabase free-tier per-file cap
 const ALLOWED_IMAGE_TYPES: Record<string, true> = { "image/jpeg": true, "image/png": true, "image/webp": true };
+const ALLOWED_VIDEO_TYPES: Record<string, string> = { "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm" };
 
 export function NewPostModal({
   defaultTopic,
@@ -22,7 +24,7 @@ export function NewPostModal({
   circleId?: string | null;
   circleName?: string | null;
   onClose: () => void;
-  onSubmit: (input: { title: string; body: string | null; topicId: string; state: string; promo: Promo | null; circleId: string | null; imageUrl: string | null }) => Promise<void>;
+  onSubmit: (input: { title: string; body: string | null; topicId: string; state: string; promo: Promo | null; circleId: string | null; imageUrl: string | null; videoUrl: string | null }) => Promise<void>;
 }) {
   const { profile } = useAuth();
   const [title, setTitle] = useState("");
@@ -34,6 +36,8 @@ export function NewPostModal({
   const [promoUrl, setPromoUrl] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [video, setVideo] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -41,26 +45,45 @@ export function NewPostModal({
   const inputClass = "w-full px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A] transition-colors";
   const isVerifiedExpert = profile?.role === "verified_expert";
 
-  const handleImageChange = (f: File | undefined) => {
+  const clearMedia = () => {
+    setImage(null);
+    setImagePreview(null);
+    setVideo(null);
+    setVideoPreview(null);
+  };
+
+  const handleMediaChange = (f: File | undefined) => {
     if (!f) {
-      setImage(null);
-      setImagePreview(null);
+      clearMedia();
+      setImageError(null);
+      return;
+    }
+    if (ALLOWED_VIDEO_TYPES[f.type]) {
+      if (f.size > MAX_VIDEO_BYTES) {
+        clearMedia();
+        setImageError("Video is too large (50MB max).");
+        return;
+      }
+      clearMedia();
+      setVideo(f);
+      setVideoPreview(URL.createObjectURL(f));
       setImageError(null);
       return;
     }
     if (!ALLOWED_IMAGE_TYPES[f.type]) {
-      setImage(null);
-      setImageError("Only JPG, PNG, or WEBP images are accepted.");
+      clearMedia();
+      setImageError("Choose a JPG, PNG, or WEBP photo, or an MP4, MOV, or WEBM video.");
       return;
     }
     if (f.size > MAX_IMAGE_BYTES) {
-      setImage(null);
+      clearMedia();
       setImageError("Image is too large (8MB max).");
       return;
     }
+    clearMedia();
     setImage(f);
-    setImageError(null);
     setImagePreview(URL.createObjectURL(f));
+    setImageError(null);
   };
 
   const handleZipChange = (val: string) => {
@@ -121,13 +144,17 @@ export function NewPostModal({
           </p>
           <div>
             <label className="text-[12px] font-medium text-[#5B584F] block mb-1.5">
-              Photo <span className="text-[#9A968A] font-normal">(optional)</span>
+              Photo or video <span className="text-[#9A968A] font-normal">(optional)</span>
             </label>
-            {imagePreview ? (
+            {imagePreview || videoPreview ? (
               <div className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview before upload */}
-                <img src={imagePreview} alt="Selected" className="w-full max-h-56 object-cover" />
-                <button onClick={() => handleImageChange(undefined)}
+                {videoPreview ? (
+                  <video src={videoPreview} controls playsInline className="w-full max-h-56 bg-black" />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element -- local object URL preview before upload
+                  <img src={imagePreview!} alt="Selected" className="w-full max-h-56 object-contain bg-[#EFEDE6]" />
+                )}
+                <button onClick={() => handleMediaChange(undefined)}
                   className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-black/80">
                   <X size={14} />
                 </button>
@@ -135,9 +162,9 @@ export function NewPostModal({
             ) : (
               <label className="flex items-center gap-2 px-3 py-2.5 text-[13px] text-[#5B584F] cursor-pointer border border-dashed border-[#E6E3DA] bg-[#FAF9F7] hover:border-[#26364A] transition-colors">
                 <Upload size={15} />
-                Choose a photo
-                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
-                  onChange={(e) => handleImageChange(e.target.files?.[0])} />
+                Choose a photo or video
+                <input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" className="hidden"
+                  onChange={(e) => handleMediaChange(e.target.files?.[0])} />
               </label>
             )}
             {imageError && <p className="text-[12px] text-[#B23B3B] mt-1.5">{imageError}</p>}
@@ -188,9 +215,22 @@ export function NewPostModal({
                 imageUrl = supabase.storage.from("post-images").getPublicUrl(path).data.publicUrl;
               }
 
+              let videoUrl: string | null = null;
+              if (video) {
+                const supabase = createClient();
+                const path = `${profile.id}/${Date.now()}.${ALLOWED_VIDEO_TYPES[video.type]}`;
+                const { error: uploadError } = await supabase.storage.from("post-videos").upload(path, video, { contentType: video.type });
+                if (uploadError) {
+                  setImageError(uploadError.message);
+                  setSaving(false);
+                  return;
+                }
+                videoUrl = supabase.storage.from("post-videos").getPublicUrl(path).data.publicUrl;
+              }
+
               const promo = isVerifiedExpert && promoLabel.trim() ? { label: promoLabel.trim(), url: promoUrl.trim() || null } : null;
               try {
-                await onSubmit({ title: title.trim(), body: body.trim() || null, topicId, state, promo, circleId, imageUrl });
+                await onSubmit({ title: title.trim(), body: body.trim() || null, topicId, state, promo, circleId, imageUrl, videoUrl });
               } catch (err) {
                 setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
               }

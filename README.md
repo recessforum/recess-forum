@@ -81,6 +81,23 @@ the post, and `app/post/[id]/opengraph-image.tsx` renders a 1200x630 card
 a "Found this helpful? Sign up free" card so shares can convert into signups.
 The card font only covers Latin text, so non-English titles won't render there.
 
+## Photo and video posts (done)
+
+A post can carry one photo (`posts.image_url`, `post-images` bucket) or one
+video (`posts.video_url`, `post-videos` bucket) — the composer's single
+"Photo or video" picker sets whichever matches the file. Photos: JPG/PNG/WEBP,
+8MB. Videos: MP4/MOV/WEBM, 50MB (the Supabase free-tier per-file cap; the
+bucket enforces size and MIME type too). Both render inline in the feed and
+on the post page (photos uncropped, videos with native controls and no
+autoplay); clicking a video's controls doesn't open the post. `POST /api/posts`
+only accepts a `videoUrl` that points into the caller's own folder of the
+`post-videos` bucket. iPhone `.mov` files play in Safari and the iOS app but
+some desktop Chrome builds can't decode HEVC, so MP4 is the safest format.
+
+To apply on a live database, run in the Supabase SQL Editor *before* deploying
+(post queries select `video_url`): the "Storage — one optional video per post"
+block at the bottom of `schema.sql`.
+
 ## Running it
 
 ```bash

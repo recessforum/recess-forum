@@ -78,7 +78,7 @@ export default function CircleDetailPage() {
     });
   };
 
-  const handleNewPost = async (input: { title: string; body: string | null; topicId: string; state: string; promo: Promo | null; circleId: string | null; imageUrl: string | null }) => {
+  const handleNewPost = async (input: { title: string; body: string | null; topicId: string; state: string; promo: Promo | null; circleId: string | null; imageUrl: string | null; videoUrl: string | null }) => {
     const res = await fetch("/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

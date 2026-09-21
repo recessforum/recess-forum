@@ -12,6 +12,7 @@ interface NewPostBody {
   promo: Promo | null;
   circleId?: string | null;
   imageUrl?: string | null;
+  videoUrl?: string | null;
 }
 
 export async function POST(req: NextRequest) {
@@ -27,6 +28,12 @@ export async function POST(req: NextRequest) {
   const circleId = data.circleId || null;
   if (circleId && !(await isCircleMember(supabase, circleId, user.id))) {
     return NextResponse.json({ error: "join the circle before posting in it" }, { status: 403 });
+  }
+
+  // Videos must be the caller's own upload in the post-videos bucket, not an arbitrary URL.
+  const videoUrl = data.videoUrl || null;
+  if (videoUrl && !videoUrl.startsWith(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/post-videos/${user.id}/`)) {
+    return NextResponse.json({ error: "invalid video" }, { status: 400 });
   }
 
   const body = data.body?.trim() || null;
@@ -47,6 +54,7 @@ export async function POST(req: NextRequest) {
       promo: data.promo || null,
       circleId,
       imageUrl: data.imageUrl || null,
+      videoUrl,
     },
     user.id
   );

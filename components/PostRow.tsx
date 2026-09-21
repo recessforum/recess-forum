@@ -57,13 +57,17 @@ export function PostRow({
           <TopicBadge topicId={post.topicId} onClick={(e) => { e.stopPropagation(); onTopic(post.topicId); }} />
           {post.circleId && post.circleName && <CircleBadge circleId={post.circleId} circleName={post.circleName} />}
         </div>
-        <h3 className="text-[16px] font-semibold leading-snug text-[#1C1B19] mb-1 group-hover:text-[#26364A] transition-colors">
+        <h3 className="text-[18px] font-semibold leading-snug text-[#1C1B19] mb-1 group-hover:text-[#26364A] transition-colors">
           {post.title}
         </h3>
         {post.body && <p className="text-[14px] text-[#5B584F] leading-relaxed line-clamp-2 mb-1.5">{post.body}</p>}
         {post.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- user-uploaded post photos, arbitrary Supabase Storage objects
-          <img src={post.imageUrl} alt="" className="w-full max-h-64 object-cover mb-1.5" />
+          <img src={post.imageUrl} alt="" className="w-full max-h-96 object-contain bg-[#EFEDE6] mb-1.5" />
+        )}
+        {post.videoUrl && (
+          <video src={`${post.videoUrl}#t=0.1`} controls playsInline preload="metadata"
+            onClick={(e) => e.stopPropagation()} className="w-full max-h-96 bg-black mb-1.5" />
         )}
         {post.promo && (
           <div className="flex items-center gap-1 text-[11px] text-[#217A78] mb-1.5">

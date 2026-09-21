@@ -322,7 +322,10 @@ export default function PostDetailPage() {
       )}
       {post.imageUrl && (
         // eslint-disable-next-line @next/next/no-img-element -- user-uploaded post photo, arbitrary Supabase Storage object
-        <img src={post.imageUrl} alt="" className="w-full max-h-[480px] object-cover mb-4" />
+        <img src={post.imageUrl} alt="" className="w-full max-h-[600px] object-contain bg-[#EFEDE6] mb-4" />
+      )}
+      {post.videoUrl && (
+        <video src={`${post.videoUrl}#t=0.1`} controls playsInline preload="metadata" className="w-full max-h-[600px] bg-black mb-4" />
       )}
       {post.promo && (
         <div className="flex items-center gap-2 text-[13px] text-[#217A78] bg-[#E4F2F1] px-3 py-2 mb-4">

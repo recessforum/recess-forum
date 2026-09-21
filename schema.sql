@@ -461,3 +461,32 @@ using (
   bucket_id = 'post-images'
   and (storage.foldername(name))[1] = auth.uid()::text
 );
+
+-- ---------------------------------------------------------------------
+-- Storage — one optional video per post (posts.video_url). Public bucket,
+-- same own-uid-folder RLS pattern as post-images. 50MB cap matches the
+-- Supabase free-tier per-file limit; mp4/mov/webm only.
+-- ---------------------------------------------------------------------
+alter table posts add column video_url text;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('post-videos', 'post-videos', true, 52428800, array['video/mp4', 'video/quicktime', 'video/webm'])
+on conflict (id) do nothing;
+
+create policy "post videos are publicly accessible"
+on storage.objects for select
+using (bucket_id = 'post-videos');
+
+create policy "users upload their own post videos"
+on storage.objects for insert
+with check (
+  bucket_id = 'post-videos'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+create policy "users delete their own post videos"
+on storage.objects for delete
+using (
+  bucket_id = 'post-videos'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);

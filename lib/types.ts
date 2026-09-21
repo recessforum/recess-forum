@@ -18,6 +18,7 @@ export interface Post {
   state: string | null;
   promo: Promo | null;
   imageUrl: string | null;
+  videoUrl: string | null;
   score: number;
   views: number;
   createdAt: number;
