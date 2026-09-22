@@ -1063,6 +1063,17 @@ no preview card at all — only individual posts had Open Graph metadata.
 Individual posts already had their own richer preview (title, body excerpt,
 topic/circle badge) via `app/post/[id]/layout.tsx` + `app/post/[id]/opengraph-image.tsx` — unchanged, still takes priority over the site-wide fallback.
 
+## Verified Expert badge now shows the profession (done)
+
+The "Verified Expert" badge only showed the profession as a hover tooltip —
+readers scanning a feed or a comment thread couldn't tell what kind of
+expert wrote something without hovering. `components/Badges.tsx`'s
+`RoleBadge` now prints it inline: "Verified Expert · School Psychologist",
+"Verified Expert · BCBA", etc. Truncates with an ellipsis (full text still on
+hover) so it doesn't break the feed row's layout on narrow screens. No data
+changes needed — `expertType` was already stored and joined onto every
+post/comment.
+
 ## Next steps, in priority order
 
 1. ~~Auth~~ — **done**, including Google sign-in (see above).

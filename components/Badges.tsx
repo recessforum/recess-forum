@@ -25,8 +25,9 @@ export function RoleBadge({ role }: { role: Role | null }) {
   }
   return (
     <span title={role.expertType}
-      className="inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-sm bg-[#E4F2F1] text-[#217A78]">
-      <BadgeCheck size={11} /> Verified Expert
+      className="inline-flex items-center gap-1 max-w-[220px] text-[11px] font-semibold px-1.5 py-0.5 rounded-sm bg-[#E4F2F1] text-[#217A78]">
+      <BadgeCheck size={11} className="shrink-0" />
+      <span className="truncate">Verified Expert{role.expertType ? ` · ${role.expertType}` : ""}</span>
     </span>
   );
 }
