@@ -942,6 +942,37 @@ Apple's own design — only a real device performs the CDN-based domain
 verification — so this needs a real-device test once the Team ID and
 Xcode capability are both in place.
 
+### Apple review round three — Guideline 4 (in-app sign-in + Apple logo) (done, code side)
+
+Apple rejected build 1.0 (1) under **Guideline 4 – Design** on an iPad Air:
+(a) tapping Google/Apple sign-in bounced the user out to their default
+browser, and (b) the "Continue with Apple" button used a generic icon rather
+than Apple's artwork.
+
+- **In-app browser sign-in.** `lib/oauth.ts` (`startOAuth`) is now used by
+  `/login` and `/signup`. On the web it's the normal redirect. In the native
+  apps it calls `signInWithOAuth` with `skipBrowserRedirect` and opens the URL
+  with `@capacitor/browser` (Safari View Controller on iOS, Custom Tabs on
+  Android), so the user never leaves the app. A `browserFinished` listener
+  resets the spinner if they dismiss the sheet.
+- **Handing the session back.** The sheet doesn't share cookies with the app's
+  webview, so the PKCE code-verifier cookie isn't there when Supabase redirects
+  to `/auth/callback`. `app/auth/callback/route.ts` detects "code present but no
+  `*-code-verifier` cookie" and returns a small page that redirects to the
+  custom scheme `com.recessforum.app://auth/callback?code=…`
+  (`lib/app-scheme.ts`). The `appUrlOpen` listener in `lib/auth-context.tsx`
+  closes the sheet and loads `/auth/callback?code=…` inside the webview, where
+  the verifier lives, so the exchange succeeds there. (If the OS routes the
+  https Universal Link to the app instead, the same listener handles it.)
+  The scheme is registered in `ios/App/App/Info.plist` (`CFBundleURLTypes`) and
+  `android/app/src/main/AndroidManifest.xml`. Needs a new native build
+  (`npx cap sync`, new build number) — the web changes alone are not enough.
+- **Apple logo.** `components/AppleLogo.tsx` is the official "Sign in with Apple
+  – Logo Only" (white) artwork from Apple Design Resources, cropped to the
+  glyph and used on the black button in place of the lucide icon.
+- Also added a **Regional Center** topic under Special Education
+  (`lib/taxonomy.ts`; topics are code-only, no SQL needed).
+
 ### Pre-submission App Store review audit, round two (done)
 
 With the code-side fixes and Apple/Supabase configuration both done, ran a

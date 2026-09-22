@@ -3,7 +3,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
 import { createClient } from "./supabase/client";
+import { APP_SCHEME } from "./app-scheme";
 
 export interface AuthProfile {
   id: string;
@@ -48,15 +50,22 @@ export function AuthProvider({ initialProfile, children }: { initialProfile: Aut
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // A Universal Link (iOS) / App Link (Android) tap on /auth/callback opens
-  // this app instead of the browser (see /.well-known/apple-app-site-association
+  // Sign-in returns here either as a custom-scheme URL (from the in-app
+  // browser sheet) or, when the OS routes it, a Universal Link (iOS) / App Link
+  // (Android) on /auth/callback that opens this app instead of the browser (see /.well-known/apple-app-site-association
   // and /.well-known/assetlinks.json), but Capacitor only delivers that as an
   // `appUrlOpen` event — the app's own webview still needs to be pointed at
   // the URL itself to actually complete the OAuth code exchange.
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-    const listenerPromise = CapacitorApp.addListener("appUrlOpen", ({ url }) => {
-      window.location.href = url;
+    const listenerPromise = CapacitorApp.addListener("appUrlOpen", async ({ url }) => {
+      // Sign-in runs in an in-app browser sheet; close it, then finish the
+      // code exchange in this webview (where the PKCE verifier lives).
+      await Browser.close().catch(() => {});
+      const parsed = new URL(url);
+      window.location.href = parsed.protocol === `${APP_SCHEME}:`
+        ? `${window.location.origin}/auth/callback${parsed.search}`
+        : url;
     });
     return () => { listenerPromise.then((l) => l.remove()); };
   }, []);

@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { APP_SCHEME } from "@/lib/app-scheme";
+
+function handoffPage(appUrl: string) {
+  const href = appUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Returning to Recess Forum</title>
+<style>body{font-family:-apple-system,system-ui,sans-serif;background:#F7F6F3;color:#1C1B19;text-align:center;padding:72px 24px}a.b{display:inline-block;margin-top:20px;padding:12px 22px;background:#26364A;color:#fff;text-decoration:none;font-weight:600;font-size:15px}p{color:#5B584F;font-size:14px}</style></head>
+<body><h1 style="font-size:20px">Signing you in…</h1><p>Returning to the Recess Forum app.</p>
+<a class="b" href="${href}">Open Recess Forum</a>
+<p style="margin-top:28px;font-size:12px">Not using the app? <a href="/login">Back to log in</a></p>
+<script>window.location.replace(${JSON.stringify(appUrl).replace(/</g, "\\u003c")});</script></body></html>`;
+}
 
 // Handles both the email-confirmation link and the OAuth (Google) redirect —
 // both send the browser here with a `code` to exchange for a session.
@@ -7,6 +18,18 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") || "/";
+
+  // Native apps run sign-in in an in-app browser sheet (Safari View
+  // Controller / Custom Tabs) that doesn't share cookies with the app's
+  // webview, so the PKCE verifier isn't here. Hand the code back to the app
+  // through its URL scheme; the webview finishes the exchange itself.
+  const hasVerifier = request.cookies.getAll().some((c) => c.name.endsWith("-code-verifier"));
+  if (code && !hasVerifier) {
+    const appUrl = `${APP_SCHEME}://auth/callback${new URL(request.url).search}`;
+    return new NextResponse(handoffPage(appUrl), {
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+    });
+  }
 
   if (code) {
     const supabase = await createClient();

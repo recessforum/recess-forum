@@ -3,8 +3,10 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Apple, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { startOAuth } from "@/lib/oauth";
+import { AppleLogo } from "@/components/AppleLogo";
 
 export default function LoginPage() {
   return (
@@ -29,13 +31,8 @@ function LoginForm() {
   const signInWithOAuth = async (provider: "google" | "apple") => {
     setError(null);
     setOauthLoading(provider);
-    const supabase = createClient();
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
-      });
-      if (error) throw error;
+      await startOAuth(provider, () => setOauthLoading(null));
     } catch {
       setError("Something went wrong. Please try again.");
       setOauthLoading(null);
@@ -60,7 +57,7 @@ function LoginForm() {
 
       <button onClick={() => signInWithOAuth("apple")} disabled={!!oauthLoading}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black text-white text-[14px] font-medium mb-3 disabled:opacity-40 hover:bg-[#1a1a1a] transition-colors">
-        {oauthLoading === "apple" ? <Loader2 size={16} className="animate-spin" /> : <Apple size={16} fill="white" />} Continue with Apple
+        {oauthLoading === "apple" ? <Loader2 size={16} className="animate-spin" /> : <AppleLogo height={18} />} Continue with Apple
       </button>
 
       <button onClick={() => signInWithOAuth("google")} disabled={!!oauthLoading}

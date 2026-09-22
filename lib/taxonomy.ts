@@ -89,6 +89,7 @@ export const CATEGORIES: Category[] = [
     id: "special-education", label: "Special Education", scope: "local",
     topics: [
       { id: "special-ed", label: "Special Education & IEPs", blurb: "IEPs, 504 plans, and navigating school support." },
+      { id: "regional-center", label: "Regional Center", blurb: "Regional center intake, services, and coordinating with your school." },
     ],
   },
   {

@@ -29,6 +29,14 @@
                 <data android:scheme="https" android:host="www.recessforum.com" android:pathPrefix="/auth/callback" />
                 <data android:scheme="https" android:host="recessforum.com" android:pathPrefix="/auth/callback" />
             </intent-filter>
+            <!-- Custom scheme: the in-app sign-in browser (Custom Tabs) returns
+                 here with the OAuth code once sign-in finishes. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.recessforum.app" android:host="auth" />
+            </intent-filter>
         </activity>
 
         <provider
