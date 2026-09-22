@@ -7,13 +7,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const supabase = await createClient();
   const post = await getPost(supabase, id).catch(() => undefined);
-  if (!post) return { title: "Recess Forum" };
+  if (!post) return { title: "Post not found" };
 
   const body = post.body?.replace(/\s+/g, " ").trim();
   const description = body
     ? body.length > 180 ? `${body.slice(0, 177)}...` : body
     : `A discussion in ${topicLabel(post.topicId)} on Recess Forum, a community for parents navigating their kids' education.`;
-  const title = `${post.title} | Recess Forum`;
+  const title = post.title;
   const url = `/post/${post.id}`;
 
   return {

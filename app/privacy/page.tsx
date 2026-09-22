@@ -1,4 +1,4 @@
-export const metadata = { title: "Privacy Policy — Recess Forum" };
+export const metadata = { title: "Privacy Policy" };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

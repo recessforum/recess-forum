@@ -1040,6 +1040,29 @@ were ported faithfully.
 | Credential file upload | Filename only, no real storage | **Real private Supabase Storage bucket**, RLS-scoped per uploader, admin access via signed URL | — already real |
 | Zip → state | Approximate 3-digit-prefix table | Same table, ported as-is (`lib/location.ts`) | A real zip database or geocoding API, if this becomes a problem in practice |
 
+## Site-wide SEO and link previews (done)
+
+Sharing the bare site URL (recessforum.com, no specific post) previously showed
+no preview card at all — only individual posts had Open Graph metadata.
+
+- `app/opengraph-image.tsx` — a generic branded 1200x630 card (logo, tagline,
+  "recessforum.com") used as the fallback `og:image` for any page that doesn't
+  define its own (home, /circles, /circles/[id], etc.).
+- `app/layout.tsx` — root metadata now includes `openGraph`/`twitter` fields
+  and a `title.template` ("%s | Recess Forum"), so every page's title is
+  consistent without each page manually appending "— Recess Forum" (the
+  static pages and the post layout were updated to just set their own plain
+  title and let the template add the suffix — a page that sets its own title
+  no longer needs to repeat "Recess Forum" in it).
+- `app/robots.ts` — allows crawling, disallows auth/admin/settings/api routes,
+  points to the sitemap.
+- `app/sitemap.ts` — static pages plus every post and circle, sourced from
+  `getPosts`/`getCircles` (same functions the app itself uses), so it stays in
+  sync automatically as content is added.
+
+Individual posts already had their own richer preview (title, body excerpt,
+topic/circle badge) via `app/post/[id]/layout.tsx` + `app/post/[id]/opengraph-image.tsx` — unchanged, still takes priority over the site-wide fallback.
+
 ## Next steps, in priority order
 
 1. ~~Auth~~ — **done**, including Google sign-in (see above).

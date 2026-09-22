@@ -1,4 +1,4 @@
-export const metadata = { title: "Child Safety Standards — Recess Forum" };
+export const metadata = { title: "Child Safety Standards" };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

@@ -7,10 +7,28 @@ import { createClient } from "@/lib/supabase/server";
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
+const SITE_URL = "https://www.recessforum.com";
+const TITLE = "Recess Forum — for parents navigating school";
+const DESCRIPTION = "A discussion forum for parents navigating their kids' education — bullying, IEPs, homeschooling, college prep, and everything in between.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.recessforum.com"),
-  title: "Recess Forum",
-  description: "A discussion forum for parents navigating their kids' education.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: TITLE, template: "%s | Recess Forum" },
+  description: DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: SITE_URL,
+    siteName: "Recess Forum",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
