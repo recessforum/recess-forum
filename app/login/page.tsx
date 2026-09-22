@@ -33,8 +33,9 @@ function LoginForm() {
     setOauthLoading(provider);
     try {
       await startOAuth(provider, () => setOauthLoading(null));
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      setError(`Something went wrong: ${detail}`);
       setOauthLoading(null);
     }
   };
