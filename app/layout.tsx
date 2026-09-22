@@ -45,9 +45,22 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     if (data) initialProfile = { ...data, email: user.email ?? null };
   }
 
+  // Basic site identity markup — not tied to any specific page's content, so
+  // safe to keep static (no potentialAction/SearchAction: the homepage's
+  // search box isn't URL-addressable, and claiming one that doesn't work is
+  // worse than having none).
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Recess Forum",
+    url: SITE_URL,
+    description: DESCRIPTION,
+  };
+
   return (
     <html lang="en" className={`${inter.className} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-[#F7F6F3] text-[#1C1B19]">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
         <AuthProvider initialProfile={initialProfile}>
           <Header />
           {children}

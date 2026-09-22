@@ -1074,6 +1074,44 @@ hover) so it doesn't break the feed row's layout on narrow screens. No data
 changes needed — `expertType` was already stored and joined onto every
 post/comment.
 
+## Reddit/Quora-style discussion-forum structured data (done)
+
+User asked specifically to replicate how Reddit/Quora get their Q&A/thread
+content surfaced directly in Google search (rich results, "People Also Ask",
+AI answer summaries) — researched Google's actual documented mechanism for
+this rather than guessing: `DiscussionForumPosting` structured data
+(schema.org, JSON-LD), which is the exact markup type Google introduced for
+Reddit/Quora/Stack Overflow-style UGC sites and powers the "Discussions and
+forums" rich result. (`QAPage`/accepted-answer schema was considered but
+skipped — it requires an "accepted answer" concept the app doesn't have;
+using it without that would be incorrect markup.)
+
+- `app/post/[id]/layout.tsx` — now also renders a `<script type="application/ld+json">`
+  block per post: headline, body text, author, datePublished, commentCount,
+  an interactionStatistic (score, as a LikeAction count), and up to the 20
+  oldest top-level comments each with their own author/text/date/score. Pulled
+  server-side directly from `getPost`/`getComments`, so it's always in sync
+  with the real page — no separate content to maintain.
+- `app/layout.tsx` — added a site-wide `WebSite` JSON-LD block (name, url,
+  description) for basic brand/entity recognition. Deliberately left out a
+  `SearchAction` (Sitelinks Search Box) since the homepage's search box isn't
+  URL-addressable (`?q=...` isn't wired up) — shipping structured data that
+  claims a feature that doesn't actually work is worse than shipping none.
+
+**Reddit/Quora technique deliberately not copied (yet), and why:** both
+render full post + comment content server-side in the initial HTML (view-source
+confirms it) — this app's `/post/[id]`, `/circles`, and `/circles/[id]` pages
+are `"use client"` and fetch their content after mount. At this site's current
+size Google's crawler renders JS-fetched content fine (it's not the "crawl
+budget" problem it would be at Reddit's scale), so this isn't costing SEO
+today, but it's the real reason Reddit/Quora are crawlable by *every* bot
+(including ones that don't run JS at all). Converting those pages to
+server-rendered would be a real architecture change — worth doing later as
+its own project, not as a drive-by here.
+
+Verify with [Google's Rich Results Test](https://search.google.com/test/rich-results)
+against a live `/post/[id]` URL once deployed.
+
 ## Next steps, in priority order
 
 1. ~~Auth~~ — **done**, including Google sign-in (see above).
