@@ -165,6 +165,12 @@ export function MobileTopicDrawer({
               ))}
 
               <div className="px-4 pt-3 text-[11px] font-semibold text-[#9A968A] tracking-wide">LOCAL</div>
+              {local.map((cat) => (
+                <CategoryGroup key={cat.id} cat={cat} isNew={recentCategoryIds.has(cat.id)} open={openCat.has(cat.id)}
+                  onToggle={() => toggle(cat.id)} selectedTopic={selectedTopic}
+                  onSelectTopic={(id) => { onSelectTopic(id); setOpen(false); }} />
+              ))}
+
               <div className="px-4 py-2">
                 {selectedState && !editingState ? (
                   <button onClick={() => setEditingState(true)} className="flex items-center gap-1.5 text-[12px]">
@@ -191,11 +197,6 @@ export function MobileTopicDrawer({
                   </div>
                 )}
               </div>
-              {local.map((cat) => (
-                <CategoryGroup key={cat.id} cat={cat} isNew={recentCategoryIds.has(cat.id)} open={openCat.has(cat.id)}
-                  onToggle={() => toggle(cat.id)} selectedTopic={selectedTopic}
-                  onSelectTopic={(id) => { onSelectTopic(id); setOpen(false); }} />
-              ))}
             </div>
           </div>
         </div>

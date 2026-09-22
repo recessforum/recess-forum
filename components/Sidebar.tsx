@@ -99,7 +99,12 @@ export function Sidebar({
       ))}
 
       <div className="px-2.5 text-[11px] font-semibold text-[#9A968A] tracking-wide mb-1 mt-2">LOCAL</div>
-      <div className="px-2.5 mb-2">
+      {local.map((cat) => (
+        <CategoryGroup key={cat.id} cat={cat} isNew={recentCategoryIds.has(cat.id)} open={openCat.has(cat.id)}
+          onToggle={() => toggle(cat.id)} selectedTopic={selectedTopic} onSelectTopic={onSelectTopic} />
+      ))}
+
+      <div className="px-2.5 mb-2 mt-2">
         {selectedState && !editingState ? (
           <button onClick={() => setEditingState(true)} className="flex items-center gap-1.5 text-[12px]">
             <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#EFEDE6] text-[#3A382F] font-medium">
@@ -125,10 +130,6 @@ export function Sidebar({
           </div>
         )}
       </div>
-      {local.map((cat) => (
-        <CategoryGroup key={cat.id} cat={cat} isNew={recentCategoryIds.has(cat.id)} open={openCat.has(cat.id)}
-          onToggle={() => toggle(cat.id)} selectedTopic={selectedTopic} onSelectTopic={onSelectTopic} />
-      ))}
     </aside>
   );
 }
