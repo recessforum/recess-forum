@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AdminBlockRecord, AdminStats, BlockedUser, Circle, Comment, ExpertApplication, Post, Promo, ProfileRole, PublicProfile, Report, ReportTargetType } from "./types";
+import type { AdminBlockRecord, AdminMember, AdminStats, BlockedUser, Circle, Comment, ExpertApplication, Post, Promo, ProfileRole, PublicProfile, Report, ReportTargetType } from "./types";
 
 /**
  * Real Supabase-backed persistence (handoff §10 item 2 — replaces the
@@ -554,6 +554,26 @@ export async function getMyBlockedUsers(supabase: SupabaseClient, blockerId: str
       blockedAt: new Date(row.created_at).getTime(),
     };
   });
+}
+
+// Full member list for the admin dashboard's "Total members" drill-down.
+// Small forum, no pagination yet — revisit once this list is large enough
+// that shipping every row on click actually matters.
+export async function getAdminMembers(supabase: SupabaseClient): Promise<AdminMember[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, avatar_url, role, state, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return (data || []).map((row) => ({
+    id: row.id,
+    displayName: row.display_name,
+    avatarUrl: row.avatar_url,
+    role: row.role,
+    state: row.state,
+    createdAt: new Date(row.created_at).getTime(),
+  }));
 }
 
 interface AdminBlockRow {

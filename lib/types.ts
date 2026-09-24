@@ -83,6 +83,15 @@ export interface BlockedUser {
   blockedAt: number;
 }
 
+export interface AdminMember {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: ProfileRole;
+  state: string | null;
+  createdAt: number;
+}
+
 export interface AdminBlockRecord {
   blockerId: string;
   blockerName: string;

@@ -6,16 +6,52 @@ import { BadgeCheck, Copy, Download, Flag, Loader2, RefreshCw, ShieldOff, X } fr
 import { useAuth } from "@/lib/auth-context";
 import { timeAgo } from "@/lib/ranking";
 import { topicLabel } from "@/lib/taxonomy";
-import type { AdminBlockRecord, AdminStats, ExpertApplication, Report } from "@/lib/types";
+import type { AdminBlockRecord, AdminMember, AdminStats, ExpertApplication, Report } from "@/lib/types";
 import type { CardNewsContent } from "@/lib/cardNews";
 
 type Application = ExpertApplication & { applicantName: string };
 
-function StatTile({ label, value }: { label: string; value: number }) {
+function StatTile({ label, value, onClick }: { label: string; value: number; onClick?: () => void }) {
+  const Tag = onClick ? "button" : "div";
   return (
-    <div className="border border-[#E6E3DA] bg-white px-4 py-3">
+    <Tag onClick={onClick}
+      className={`border border-[#E6E3DA] bg-white px-4 py-3 text-left ${onClick ? "hover:border-[#B08D45] transition-colors cursor-pointer" : ""}`}>
       <p className="text-[20px] font-semibold text-[#1C1B19] leading-tight">{value.toLocaleString()}</p>
       <p className="text-[12px] text-[#9A968A] mt-0.5">{label}</p>
+    </Tag>
+  );
+}
+
+function MemberListModal({ members, loading, error, onClose }: {
+  members: AdminMember[] | null; loading: boolean; error: string | null; onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-start sm:items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white w-full max-w-md max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E6E3DA]">
+          <h3 className="text-[15px] font-semibold text-[#1C1B19]">Members {members ? `(${members.length})` : ""}</h3>
+          <button onClick={onClose} className="text-[#9A968A] hover:text-[#1C1B19]"><X size={18} /></button>
+        </div>
+        <div className="overflow-y-auto px-5 py-2">
+          {loading && (
+            <div className="flex items-center gap-2 text-[14px] text-[#9A968A] py-6">
+              <Loader2 size={16} className="animate-spin" /> Loading members...
+            </div>
+          )}
+          {error && <p className="text-[13px] text-[#B23B3B] py-4">{error}</p>}
+          {members?.map((m) => (
+            <div key={m.id} className="flex items-center justify-between py-2.5 border-b border-[#E6E3DA] last:border-0">
+              <div className="min-w-0">
+                <a href={`/u/${m.id}`} target="_blank" rel="noopener noreferrer"
+                  className="text-[13px] font-medium text-[#1C1B19] hover:underline">{m.displayName}</a>
+                <p className="text-[11px] text-[#9A968A]">
+                  {m.role !== "member" ? `${m.role} · ` : ""}{m.state || "no state"} · joined {timeAgo(m.createdAt)} ago
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -54,6 +90,11 @@ export default function AdminPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [blocks, setBlocks] = useState<AdminBlockRecord[] | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
+
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [members, setMembers] = useState<AdminMember[] | null>(null);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membersError, setMembersError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -122,6 +163,21 @@ export default function AdminPage() {
     setCardLoading(false);
   };
 
+  const openMembers = async () => {
+    setMembersOpen(true);
+    if (members || membersLoading) return;
+    setMembersLoading(true);
+    setMembersError(null);
+    const res = await fetch("/api/admin/members");
+    const data = await res.json();
+    if (!res.ok) {
+      setMembersError(data.error || "Couldn't load members.");
+    } else {
+      setMembers(data.members);
+    }
+    setMembersLoading(false);
+  };
+
   const copyCaption = async () => {
     if (!card) return;
     await navigator.clipboard.writeText(card.caption);
@@ -174,7 +230,7 @@ export default function AdminPage() {
       {stats && (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-8">
-            <StatTile label="Total members" value={stats.totalUsers} />
+            <StatTile label="Total members" value={stats.totalUsers} onClick={openMembers} />
             <StatTile label="New today" value={stats.newUsersToday} />
             <StatTile label="New this week" value={stats.newUsersThisWeek} />
             <StatTile label="Total posts" value={stats.totalPosts} />
@@ -388,6 +444,15 @@ export default function AdminPage() {
             ))}
           </div>
         </>
+      )}
+
+      {membersOpen && (
+        <MemberListModal
+          members={members}
+          loading={membersLoading}
+          error={membersError}
+          onClose={() => setMembersOpen(false)}
+        />
       )}
     </div>
   );
