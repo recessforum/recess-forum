@@ -9,7 +9,7 @@ import type { Post } from "@/lib/types";
 const EDGE_SWIPE_THRESHOLD = 45;
 const NEW_TAG_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-function TopicRow({ topic, categoryId, active, onClick }: { topic: Topic; categoryId: string; active: boolean; onClick: () => void }) {
+function TopicRow({ topic, categoryId, isNew, active, onClick }: { topic: Topic; categoryId: string; isNew: boolean; active: boolean; onClick: () => void }) {
   const c = colorForCategory(categoryId);
   return (
     <button onClick={onClick}
@@ -17,14 +17,15 @@ function TopicRow({ topic, categoryId, active, onClick }: { topic: Topic; catego
       className="text-left px-4 py-2.5 text-[14px] w-full border-l-2 transition-colors flex items-center gap-2">
       <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: c.solid }} />
       <span className={active ? "font-semibold text-[#1C1B19]" : "text-[#5B584F]"}>{topic.label}</span>
+      {isNew && <span className="px-1.5 py-0.5 rounded-sm text-[9px] font-bold bg-[#B23B3B] text-white tracking-wide">New</span>}
     </button>
   );
 }
 
 function CategoryGroup({
-  cat, isNew, open, onToggle, selectedTopic, onSelectTopic,
+  cat, isNew, recentTopicIds, open, onToggle, selectedTopic, onSelectTopic,
 }: {
-  cat: Category; isNew: boolean; open: boolean; onToggle: () => void;
+  cat: Category; isNew: boolean; recentTopicIds: Set<string>; open: boolean; onToggle: () => void;
   selectedTopic: string | null; onSelectTopic: (id: string | null) => void;
 }) {
   const [showTip, setShowTip] = useState(false);
@@ -48,7 +49,7 @@ function CategoryGroup({
       {open && (
         <div className="flex flex-col">
           {cat.topics.map((t) => (
-            <TopicRow key={t.id} topic={t} categoryId={cat.id} active={selectedTopic === t.id} onClick={() => onSelectTopic(selectedTopic === t.id ? null : t.id)} />
+            <TopicRow key={t.id} topic={t} categoryId={cat.id} isNew={recentTopicIds.has(t.id)} active={selectedTopic === t.id} onClick={() => onSelectTopic(selectedTopic === t.id ? null : t.id)} />
           ))}
         </div>
       )}
@@ -84,6 +85,17 @@ export function MobileTopicDrawer({
       if (p.createdAt < cutoff) continue;
       const cat = CATEGORIES.find((c) => c.topics.some((t) => t.id === p.topicId));
       if (cat) ids.add(cat.id);
+    }
+    return ids;
+  }, [posts]);
+
+  const recentTopicIds = useMemo(() => {
+    if (!posts) return new Set<string>();
+    const cutoff = Date.now() - NEW_TAG_WINDOW_MS;
+    const ids = new Set<string>();
+    for (const p of posts) {
+      if (p.createdAt < cutoff) continue;
+      ids.add(p.topicId);
     }
     return ids;
   }, [posts]);
@@ -159,14 +171,14 @@ export function MobileTopicDrawer({
 
               <div className="px-4 pt-3 text-[11px] font-semibold text-[#9A968A] tracking-wide">NATIONWIDE</div>
               {nationwide.map((cat) => (
-                <CategoryGroup key={cat.id} cat={cat} isNew={recentCategoryIds.has(cat.id)} open={openCat.has(cat.id)}
+                <CategoryGroup key={cat.id} cat={cat} isNew={recentCategoryIds.has(cat.id)} recentTopicIds={recentTopicIds} open={openCat.has(cat.id)}
                   onToggle={() => toggle(cat.id)} selectedTopic={selectedTopic}
                   onSelectTopic={(id) => { onSelectTopic(id); setOpen(false); }} />
               ))}
 
               <div className="px-4 pt-3 text-[11px] font-semibold text-[#9A968A] tracking-wide">LOCAL</div>
               {local.map((cat) => (
-                <CategoryGroup key={cat.id} cat={cat} isNew={recentCategoryIds.has(cat.id)} open={openCat.has(cat.id)}
+                <CategoryGroup key={cat.id} cat={cat} isNew={recentCategoryIds.has(cat.id)} recentTopicIds={recentTopicIds} open={openCat.has(cat.id)}
                   onToggle={() => toggle(cat.id)} selectedTopic={selectedTopic}
                   onSelectTopic={(id) => { onSelectTopic(id); setOpen(false); }} />
               ))}

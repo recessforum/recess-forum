@@ -7,6 +7,7 @@ import { ChevronLeft, Loader2, MessageSquare } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { countsFor, karmaFor, roleFor, tierFor } from "@/lib/roles";
 import { timeAgo } from "@/lib/ranking";
+import { isFoundingMember, type FoundingStatus } from "@/lib/founding";
 import type { Comment, Post, PublicProfile } from "@/lib/types";
 import { Avatar } from "@/components/Avatar";
 import { AuthorBadges } from "@/components/Badges";
@@ -25,16 +26,19 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [tab, setTab] = useState<"posts" | "replies">("posts");
+  const [foundingStatus, setFoundingStatus] = useState<FoundingStatus | null>(null);
 
   useEffect(() => {
     (async () => {
-      const [profileRes, bootstrapRes] = await Promise.all([
+      const [profileRes, bootstrapRes, foundingRes] = await Promise.all([
         fetch(`/api/profiles/${id}`),
         fetch("/api/bootstrap"),
+        fetch("/api/founding-status"),
       ]);
       if (!profileRes.ok) { setNotFound(true); setLoading(false); return; }
       const profileData = await profileRes.json();
       const bootstrap = await bootstrapRes.json();
+      if (foundingRes.ok) setFoundingStatus(await foundingRes.json());
       setProfile(profileData.profile);
       setAllPosts(bootstrap.posts);
       setAllComments(bootstrap.comments);
@@ -83,6 +87,7 @@ export default function ProfilePage() {
   const karma = karmaFor(profile.id, allPosts, allComments);
   const tier = tierFor(profile.id, allPosts, allComments);
   const role = roleFor(profile.role, profile.expertType);
+  const founding = foundingStatus ? isFoundingMember(profile.createdAt, foundingStatus) : false;
   const posts = allPosts.filter((p) => p.authorId === profile.id).sort((a, b) => b.createdAt - a.createdAt);
   const replies = Object.values(allComments).flat()
     .filter((c) => c.authorId === profile.id)
@@ -104,7 +109,7 @@ export default function ProfilePage() {
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <h1 className="text-[19px] font-semibold text-[#1C1B19]">{profile.displayName}</h1>
-            <AuthorBadges tier={tier} role={role} />
+            <AuthorBadges tier={tier} role={role} founding={founding} />
           </div>
           <div className="flex items-center gap-3 text-[13px] text-[#9A968A]">
             <span className="text-[#26364A] font-medium">{karma} karma</span>

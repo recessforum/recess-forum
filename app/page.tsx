@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Flame, Loader2, Search, Trophy } from "lucide-react";
+import Link from "next/link";
+import { Brain, Clock, Flame, GraduationCap, Heart, Home as HomeIcon, Loader2, MapPin, Plus, School, Search, Trophy } from "lucide-react";
 import { CATEGORIES, categoryOf, colorForCategory, topicById } from "@/lib/taxonomy";
 import { topicLabel } from "@/lib/taxonomy";
 import { hotScore, rangeCutoff } from "@/lib/ranking";
@@ -11,7 +12,22 @@ import type { Comment, Post } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileTopicDrawer } from "@/components/MobileTopicDrawer";
 import { PostRow } from "@/components/PostRow";
+import { NewPostModal } from "@/components/NewPostModal";
+import { LoginRequiredModal } from "@/components/LoginRequiredModal";
 import { useAuth } from "@/lib/auth-context";
+
+/* Curated shortcuts for the hero — not the full topic list (that's the pill
+   row below), just the handful of intents parents land on the homepage
+   looking for. The homepage previously jumped straight into a category grid
+   with no "why am I here" framing — this gives new visitors a faster "oh,
+   this is for me" moment before the full topic list. */
+const HERO_SHORTCUTS = [
+  { categoryId: "school-types", label: "School", icon: School },
+  { categoryId: "special-education", label: "IEP / 504", icon: Brain },
+  { categoryId: "homeschooling", label: "Homeschooling", icon: HomeIcon },
+  { categoryId: "college-prep", label: "College Prep", icon: GraduationCap },
+  { categoryId: "wellbeing", label: "Wellbeing", icon: Heart },
+] as const;
 
 type Sort = "hot" | "new" | "top";
 type TopRange = "day" | "week" | "month" | "all";
@@ -32,6 +48,8 @@ export default function HomePage() {
   const [selectedState, setSelectedState] = useState<string | null>(null);
 
   const [postVoteDirs, setPostVoteDirs] = useState<Record<string, number>>({});
+  const [showNewPost, setShowNewPost] = useState(false);
+  const [showLoginRequired, setShowLoginRequired] = useState(false);
 
   // Persisted across visits — see Recess_Forum_Sidebar_Proposal_KO.docx §3 ("saved for next visit").
   useEffect(() => {
@@ -80,6 +98,20 @@ export default function HomePage() {
     [posts, comments]
   );
 
+  const handleNewPost = async (input: { title: string; body: string | null; topicId: string; state: string; promo: import("@/lib/types").Promo | null; circleId: string | null; imageUrl: string | null; videoUrl: string | null }) => {
+    const res = await fetch("/api/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Something went wrong. Please try again.");
+    setShowNewPost(false);
+    router.push(`/post/${data.post.id}`);
+  };
+
+  const askQuestion = () => { if (!profile) setShowLoginRequired(true); else setShowNewPost(true); };
+
   const activeTopic = selectedTopic ? topicById(selectedTopic) : null;
   const activeCategory = selectedTopic ? categoryOf(selectedTopic) : null;
   const goTopic = (topicId: string | null) => { setSelectedTopic(topicId); setSelectedCategory(null); };
@@ -115,6 +147,35 @@ export default function HomePage() {
         selectedState={selectedState} onSelectState={handleSelectState} posts={posts} />
 
       <main className="flex-1 min-w-0">
+        {!activeTopic && !selectedCategory && (
+          <div className="mb-8 pb-8 border-b border-[#E6E3DA]">
+            <h1 className="text-[26px] sm:text-[30px] font-semibold text-[#1C1B19] leading-tight mb-2">
+              Parenting is full of questions.<br className="hidden sm:block" /> You shouldn&apos;t have to figure them out alone.
+            </h1>
+            <p className="text-[15px] text-[#5B584F] mb-5">Ask parents. Get real answers. Find your community.</p>
+            <div className="flex flex-wrap items-center gap-2 mb-5">
+              {HERO_SHORTCUTS.map(({ categoryId, label, icon: Icon }) => {
+                const col = colorForCategory(categoryId);
+                return (
+                  <button key={categoryId} onClick={() => goCategory(categoryId)}
+                    style={{ borderColor: "#E6E3DA" }}
+                    className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#1C1B19] bg-white border hover:border-[#26364A] transition-colors">
+                    <Icon size={14} style={{ color: col.text }} /> {label}
+                  </button>
+                );
+              })}
+              <Link href="/circles"
+                className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#1C1B19] bg-white border border-[#E6E3DA] hover:border-[#26364A] transition-colors">
+                <MapPin size={14} className="text-[#B08D45]" /> Local Parents
+              </Link>
+            </div>
+            <button onClick={askQuestion}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-[#26364A] text-white text-[14px] font-semibold hover:bg-[#1e2c3d] transition-colors">
+              <Plus size={16} /> Ask your question
+            </button>
+          </div>
+        )}
+
         {activeTopic && (
           <div className="mb-6 pb-5 border-b border-[#E6E3DA] border-l-4 pl-4" style={{ borderLeftColor: colorForCategory(activeCategory?.id).solid }}>
             <div className="text-[12px] font-medium mb-1" style={{ color: colorForCategory(activeCategory?.id).text }}>{activeCategory?.label}</div>
@@ -198,6 +259,13 @@ export default function HomePage() {
           </div>
         )}
       </main>
+
+      {showNewPost && profile && (
+        <NewPostModal defaultTopic={selectedTopic} onClose={() => setShowNewPost(false)} onSubmit={handleNewPost} />
+      )}
+      {showLoginRequired && (
+        <LoginRequiredModal onClose={() => setShowLoginRequired(false)} />
+      )}
     </div>
   );
 }

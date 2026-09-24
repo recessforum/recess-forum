@@ -1,0 +1,208 @@
+<!doctype html>
+<!--
+  Recess Forum card-news template. Fill in every {{PLACEHOLDER}} with real
+  content before rendering — see ../SKILL.md and ../references/category-colors.md.
+
+  {{TOPIC_LABEL}}      e.g. "Bullying"
+  {{TOPIC_TEXT}}       topic badge text color, e.g. #B85A3A
+  {{TOPIC_BG}}         topic badge background color, e.g. #F7E9E2
+  {{ACCENT_TINT}}      a very light wash of TOPIC_TEXT for the corner glow (roughly TOPIC_BG works fine)
+  {{HEADLINE}}         the real post title/body, as a question or statement
+  {{REPLY_LABEL}}      usually "A PARENT REPLIED" — swap to something else only if there's no reply (see SKILL.md's zero-reply variant)
+  {{REPLY_EXCERPT}}    the real top reply's text, verbatim (trim with "..." if long, but don't alter the wording)
+  {{AVATAR_LETTER}}    first letter of the post author's display name
+  {{META_LINE}}        e.g. "Posted by Charlotte023 · 1 reply · 7 upvotes" — all real numbers
+  {{CTA_LABEL}}         e.g. "Read the full reply →" or "Read the replies →"
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+  html, body {
+    width: 1080px;
+    height: 1350px;
+    background: #F7F6F3;
+    overflow: hidden;
+  }
+  .card {
+    width: 1080px;
+    height: 1350px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    /* Wide side padding (132px, not 72px) is deliberate: Instagram's grid/
+       reels-mixed profile view center-crops posts horizontally by roughly
+       40-70px per side before displaying the thumbnail, which was clipping
+       the first 1-2 letters of headlines when padding was 72px. Keep all
+       text inside this wider safe margin. */
+    padding: 76px 132px;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    top: 0; right: 0;
+    width: 520px; height: 520px;
+    background: radial-gradient(circle at top right, {{ACCENT_TINT}} 0%, rgba(0,0,0,0) 70%);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    z-index: 2;
+  }
+  .brand .mark {
+    width: 44px; height: 44px;
+    border-radius: 11px;
+    background: #26364A;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .brand .mark .dot {
+    width: 16px; height: 16px;
+    border-radius: 8px;
+    background: #B08D45;
+  }
+  .brand .name {
+    font-size: 26px;
+    font-weight: 700;
+    color: #26364A;
+    letter-spacing: -0.01em;
+  }
+
+  .topic {
+    display: inline-flex;
+    align-self: flex-start;
+    margin-top: 64px;
+    padding: 10px 20px;
+    background: {{TOPIC_BG}};
+    color: {{TOPIC_TEXT}};
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    z-index: 2;
+  }
+
+  .quote-mark {
+    font-size: 120px;
+    line-height: 1;
+    color: {{TOPIC_BG}};
+    font-weight: 800;
+    margin-top: 18px;
+    font-family: Georgia, serif;
+    z-index: 2;
+    filter: saturate(0.6);
+  }
+
+  /* Font size is fixed for a headline in the 90-160 character range. For a
+     notably shorter or longer real headline, adjust this before rendering
+     rather than letting it overflow or look sparse. */
+  .headline {
+    margin-top: -22px;
+    font-size: 56px;
+    font-weight: 700;
+    line-height: 1.24;
+    color: #1C1B19;
+    letter-spacing: -0.01em;
+    z-index: 2;
+  }
+
+  .divider {
+    width: 64px;
+    height: 4px;
+    background: #E6E3DA;
+    margin: 40px 0 36px;
+    z-index: 2;
+  }
+
+  .reply-label {
+    font-size: 20px;
+    font-weight: 700;
+    color: #217A78;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+    z-index: 2;
+  }
+
+  .body {
+    font-size: 27px;
+    line-height: 1.55;
+    color: #5B584F;
+    z-index: 2;
+  }
+
+  .spacer { flex: 1; }
+
+  .meta-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 40px;
+    z-index: 2;
+  }
+  .avatar {
+    width: 40px; height: 40px;
+    border-radius: 20px;
+    background: #1C1B19;
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .meta-text {
+    font-size: 20px;
+    color: #9A968A;
+  }
+  .meta-text b { color: #5B584F; font-weight: 600; }
+
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 34px;
+    border-top: 2px solid #E6E3DA;
+    z-index: 2;
+  }
+  .footer .cta {
+    font-size: 24px;
+    font-weight: 700;
+    color: #26364A;
+  }
+  .footer .url {
+    font-size: 22px;
+    font-weight: 500;
+    color: #B08D45;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="mark"><div class="dot"></div></div>
+      <div class="name">Recess Forum</div>
+    </div>
+
+    <div class="topic">{{TOPIC_LABEL}}</div>
+    <div class="quote-mark">&ldquo;</div>
+    <div class="headline">{{HEADLINE}}</div>
+
+    <div class="divider"></div>
+    <div class="reply-label">{{REPLY_LABEL}}</div>
+    <div class="body">{{REPLY_EXCERPT}}</div>
+
+    <div class="spacer"></div>
+
+    <div class="meta-row">
+      <div class="avatar">{{AVATAR_LETTER}}</div>
+      <div class="meta-text">{{META_LINE}}</div>
+    </div>
+
+    <div class="footer">
+      <div class="cta">{{CTA_LABEL}}</div>
+      <div class="url">recessforum.com</div>
+    </div>
+  </div>
+</body>
+</html>

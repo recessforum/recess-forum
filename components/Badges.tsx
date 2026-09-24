@@ -1,4 +1,4 @@
-import { BadgeCheck, Crown, Rocket, ShieldCheck, Sprout, Star } from "lucide-react";
+import { BadgeCheck, Crown, Rocket, ShieldCheck, Sparkles, Sprout, Star } from "lucide-react";
 import type { Role, Tier } from "@/lib/types";
 
 const TIER_ICONS = { crown: Crown, star: Star, sprout: Sprout, rocket: Rocket } as const;
@@ -32,11 +32,28 @@ export function RoleBadge({ role }: { role: Role | null }) {
   );
 }
 
-export function AuthorBadges({ tier, role }: { tier: Parameters<typeof TierBadge>[0]["tier"]; role: Role | null }) {
-  if (!tier && !role) return null;
+export function FoundingBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-sm bg-[#F5EFDD] text-[#B08D45]">
+      <Sparkles size={11} /> Founding Parent
+    </span>
+  );
+}
+
+export function AuthorBadges({
+  tier,
+  role,
+  founding,
+}: {
+  tier: Parameters<typeof TierBadge>[0]["tier"];
+  role: Role | null;
+  founding?: boolean;
+}) {
+  if (!tier && !role && !founding) return null;
   return (
     <span className="inline-flex items-center gap-1">
       <RoleBadge role={role} />
+      {founding && <FoundingBadge />}
       <TierBadge tier={tier} />
     </span>
   );

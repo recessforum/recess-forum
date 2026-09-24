@@ -83,6 +83,30 @@ export interface BlockedUser {
   blockedAt: number;
 }
 
+export interface AdminBlockRecord {
+  blockerId: string;
+  blockerName: string;
+  blockedId: string;
+  blockedName: string;
+  createdAt: number;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  newUsersToday: number;
+  newUsersThisWeek: number;
+  totalPosts: number;
+  newPostsToday: number;
+  newPostsThisWeek: number;
+  totalComments: number;
+  newCommentsToday: number;
+  newCommentsThisWeek: number;
+  pendingReports: number;
+  pendingExpertApplications: number;
+  usersByState: { state: string; count: number }[];
+  postsByTopic: { topicId: string; count: number }[];
+}
+
 export type ExpertApplicationStatus = "pending" | "approved" | "rejected";
 
 export interface ExpertApplication {

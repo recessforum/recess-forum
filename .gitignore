@@ -54,3 +54,6 @@ ios/App/Pods
 ios/App/build
 ios/App/DerivedData
 ios/.build
+
+# Claude Code personal settings (permissions, etc.) — not shared/committed
+.claude/settings.local.json

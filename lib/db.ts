@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { BlockedUser, Circle, Comment, ExpertApplication, Post, Promo, ProfileRole, PublicProfile, Report, ReportTargetType } from "./types";
+import type { AdminBlockRecord, AdminStats, BlockedUser, Circle, Comment, ExpertApplication, Post, Promo, ProfileRole, PublicProfile, Report, ReportTargetType } from "./types";
 
 /**
  * Real Supabase-backed persistence (handoff §10 item 2 — replaces the
@@ -554,4 +554,103 @@ export async function getMyBlockedUsers(supabase: SupabaseClient, blockerId: str
       blockedAt: new Date(row.created_at).getTime(),
     };
   });
+}
+
+interface AdminBlockRow {
+  blocker_id: string;
+  blocked_id: string;
+  created_at: string;
+  blocker: { display_name: string } | { display_name: string }[] | null;
+  blocked: { display_name: string } | { display_name: string }[] | null;
+}
+
+// Every block relationship site-wide, for the admin dashboard — unlike
+// getMyBlockedUsers (a member's own list), this isn't scoped to one blocker.
+// A user showing up as blocked_id many times over is the actual moderation
+// signal here, so we return the raw rows and let the page do the counting.
+export async function getAdminBlocks(supabase: SupabaseClient): Promise<AdminBlockRecord[]> {
+  const { data, error } = await supabase
+    .from("blocks")
+    .select("blocker_id, blocked_id, created_at, blocker:profiles!blocks_blocker_id_fkey(display_name), blocked:profiles!blocks_blocked_id_fkey(display_name)")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return ((data as unknown as AdminBlockRow[]) || []).map((row) => {
+    const blocker = Array.isArray(row.blocker) ? row.blocker[0] : row.blocker;
+    const blocked = Array.isArray(row.blocked) ? row.blocked[0] : row.blocked;
+    return {
+      blockerId: row.blocker_id,
+      blockerName: blocker?.display_name ?? "deleted",
+      blockedId: row.blocked_id,
+      blockedName: blocked?.display_name ?? "deleted",
+      createdAt: new Date(row.created_at).getTime(),
+    };
+  });
+}
+
+// Site-wide counts for the admin dashboard. Runs a batch of small
+// head-only/count queries in parallel rather than pulling full rows — the
+// state/topic breakdowns are the only place actual column values are
+// fetched, since Postgres has no plain "group by, count" through the
+// Supabase JS client and the table sizes here are small enough that
+// grouping client-side is simpler than adding a Postgres view for it.
+export async function getAdminStats(supabase: SupabaseClient): Promise<AdminStats> {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const count = (table: string, gte?: string) => {
+    let q = supabase.from(table).select("id", { count: "exact", head: true });
+    if (gte) q = q.gte("created_at", gte);
+    return q;
+  };
+
+  const [
+    totalUsers, newUsersToday, newUsersThisWeek,
+    totalPosts, newPostsToday, newPostsThisWeek,
+    totalComments, newCommentsToday, newCommentsThisWeek,
+    pendingReports, pendingExpertApplications,
+    statesRes, topicsRes,
+  ] = await Promise.all([
+    count("profiles"), count("profiles", startOfToday), count("profiles", sevenDaysAgo),
+    count("posts"), count("posts", startOfToday), count("posts", sevenDaysAgo),
+    count("comments"), count("comments", startOfToday), count("comments", sevenDaysAgo),
+    supabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("expert_applications").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("profiles").select("state"),
+    supabase.from("posts").select("topic_id"),
+  ]);
+
+  const stateCounts = new Map<string, number>();
+  for (const row of (statesRes.data as { state: string | null }[]) || []) {
+    if (!row.state) continue;
+    stateCounts.set(row.state, (stateCounts.get(row.state) ?? 0) + 1);
+  }
+  const usersByState = [...stateCounts.entries()]
+    .map(([state, c]) => ({ state, count: c }))
+    .sort((a, b) => b.count - a.count);
+
+  const topicCounts = new Map<string, number>();
+  for (const row of (topicsRes.data as { topic_id: string }[]) || []) {
+    topicCounts.set(row.topic_id, (topicCounts.get(row.topic_id) ?? 0) + 1);
+  }
+  const postsByTopic = [...topicCounts.entries()]
+    .map(([topicId, c]) => ({ topicId, count: c }))
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    totalUsers: totalUsers.count ?? 0,
+    newUsersToday: newUsersToday.count ?? 0,
+    newUsersThisWeek: newUsersThisWeek.count ?? 0,
+    totalPosts: totalPosts.count ?? 0,
+    newPostsToday: newPostsToday.count ?? 0,
+    newPostsThisWeek: newPostsThisWeek.count ?? 0,
+    totalComments: totalComments.count ?? 0,
+    newCommentsToday: newCommentsToday.count ?? 0,
+    newCommentsThisWeek: newCommentsThisWeek.count ?? 0,
+    pendingReports: pendingReports.count ?? 0,
+    pendingExpertApplications: pendingExpertApplications.count ?? 0,
+    usersByState,
+    postsByTopic,
+  };
 }
