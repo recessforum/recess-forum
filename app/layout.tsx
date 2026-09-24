@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
+import { AccountTypeGate } from "@/components/AccountTypeGate";
 import { AuthProvider, type AuthProfile } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/server";
 
@@ -39,7 +40,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("id, display_name, role, expert_type, avatar_url")
+      .select("id, display_name, role, expert_type, avatar_url, account_type, founding_number")
       .eq("id", user.id)
       .single();
     if (data) initialProfile = { ...data, email: user.email ?? null };
@@ -63,6 +64,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
         <AuthProvider initialProfile={initialProfile}>
           <Header />
+          <AccountTypeGate />
           {children}
         </AuthProvider>
       </body>

@@ -14,6 +14,8 @@ export interface AuthProfile {
   role: "member" | "verified_expert" | "admin";
   expert_type: string | null;
   avatar_url: string | null;
+  account_type: "parent" | "provider" | null;
+  founding_number: number | null;
 }
 
 const AuthContext = createContext<{ profile: AuthProfile | null; loading: boolean; refreshProfile: () => Promise<void> }>({
@@ -30,7 +32,7 @@ export function AuthProvider({ initialProfile, children }: { initialProfile: Aut
     const supabase = createClient();
     const { data } = await supabase
       .from("profiles")
-      .select("id, display_name, role, expert_type, avatar_url")
+      .select("id, display_name, role, expert_type, avatar_url, account_type, founding_number")
       .eq("id", userId)
       .single();
     setProfile(data ? { ...data, email } : null);

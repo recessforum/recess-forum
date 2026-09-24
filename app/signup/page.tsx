@@ -6,6 +6,8 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { startOAuth } from "@/lib/oauth";
 import { AppleLogo } from "@/components/AppleLogo";
+import { AccountTypeChoice } from "@/components/AccountTypeChoice";
+import { setPendingAccountType, type AccountType } from "@/lib/account-type";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -15,14 +17,17 @@ export default function SignupPage() {
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(null);
 
   const inputClass = "w-full px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A] transition-colors";
-  const canSubmit = email.trim() && password.length >= 6 && nickname.trim() && agreed && !sending;
+  const ready = agreed && !!accountType;
+  const canSubmit = email.trim() && password.length >= 6 && nickname.trim() && ready && !sending;
 
   const signInWithOAuth = async (provider: "google" | "apple") => {
-    if (!agreed) return;
+    if (!ready) return;
     setError(null);
+    setPendingAccountType(accountType!);
     setOauthLoading(provider);
     try {
       await startOAuth(provider, () => setOauthLoading(null));
@@ -36,12 +41,13 @@ export default function SignupPage() {
   const submit = async () => {
     setError(null);
     setSending(true);
+    setPendingAccountType(accountType!);
     const supabase = createClient();
     const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
-        data: { display_name: nickname.trim() },
+        data: { display_name: nickname.trim(), account_type: accountType },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -67,6 +73,10 @@ export default function SignupPage() {
       <h1 className="text-[22px] font-semibold text-[#1C1B19] mb-1">Create an account</h1>
       <p className="text-[13px] text-[#9A968A] mb-6">Join the conversation — post under a nickname if you&apos;d rather not use your name.</p>
 
+      <div className="mb-5">
+        <AccountTypeChoice value={accountType} onChange={setAccountType} />
+      </div>
+
       <label className="flex items-start gap-2 mb-4 cursor-pointer">
         <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)}
           className="mt-0.5 shrink-0" />
@@ -78,12 +88,12 @@ export default function SignupPage() {
         </span>
       </label>
 
-      <button onClick={() => signInWithOAuth("apple")} disabled={!agreed || !!oauthLoading}
+      <button onClick={() => signInWithOAuth("apple")} disabled={!ready || !!oauthLoading}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black text-white text-[14px] font-medium mb-3 disabled:opacity-40 hover:bg-[#1a1a1a] transition-colors">
         {oauthLoading === "apple" ? <Loader2 size={16} className="animate-spin" /> : <AppleLogo height={18} />} Continue with Apple
       </button>
 
-      <button onClick={() => signInWithOAuth("google")} disabled={!agreed || !!oauthLoading}
+      <button onClick={() => signInWithOAuth("google")} disabled={!ready || !!oauthLoading}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-[#E6E3DA] text-[14px] font-medium text-[#1C1B19] mb-4 disabled:opacity-40 hover:bg-[#FAF9F7] transition-colors">
         {oauthLoading === "google" && <Loader2 size={14} className="animate-spin" />} Continue with Google
       </button>
