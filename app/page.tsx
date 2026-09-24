@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Brain, Clock, Flame, GraduationCap, Heart, Home as HomeIcon, Loader2, MapPin, Plus, School, Search, Trophy } from "lucide-react";
+import { Clock, Flame, Loader2, Plus, Search, Trophy } from "lucide-react";
 import { CATEGORIES, categoryOf, colorForCategory, topicById } from "@/lib/taxonomy";
 import { topicLabel } from "@/lib/taxonomy";
 import { hotScore, rangeCutoff } from "@/lib/ranking";
@@ -14,20 +14,8 @@ import { MobileTopicDrawer } from "@/components/MobileTopicDrawer";
 import { PostRow } from "@/components/PostRow";
 import { NewPostModal } from "@/components/NewPostModal";
 import { LoginRequiredModal } from "@/components/LoginRequiredModal";
+import { RecessMark } from "@/components/RecessMark";
 import { useAuth } from "@/lib/auth-context";
-
-/* Curated shortcuts for the hero — not the full topic list (that's the pill
-   row below), just the handful of intents parents land on the homepage
-   looking for. The homepage previously jumped straight into a category grid
-   with no "why am I here" framing — this gives new visitors a faster "oh,
-   this is for me" moment before the full topic list. */
-const HERO_SHORTCUTS = [
-  { categoryId: "school-types", label: "School", icon: School },
-  { categoryId: "special-education", label: "IEP / 504", icon: Brain },
-  { categoryId: "homeschooling", label: "Homeschooling", icon: HomeIcon },
-  { categoryId: "college-prep", label: "College Prep", icon: GraduationCap },
-  { categoryId: "wellbeing", label: "Wellbeing", icon: Heart },
-] as const;
 
 type Sort = "hot" | "new" | "top";
 type TopRange = "day" | "week" | "month" | "all";
@@ -148,31 +136,26 @@ export default function HomePage() {
 
       <main className="flex-1 min-w-0">
         {!activeTopic && !selectedCategory && (
-          <div className="mb-8 pb-8 border-b border-[#E6E3DA]">
-            <h1 className="text-[26px] sm:text-[30px] font-semibold text-[#1C1B19] leading-tight mb-2">
-              Parenting is full of questions.<br className="hidden sm:block" /> You shouldn&apos;t have to figure them out alone.
-            </h1>
-            <p className="text-[15px] text-[#5B584F] mb-5">Ask parents. Get real answers. Find your community.</p>
-            <div className="flex flex-wrap items-center gap-2 mb-5">
-              {HERO_SHORTCUTS.map(({ categoryId, label, icon: Icon }) => {
-                const col = colorForCategory(categoryId);
-                return (
-                  <button key={categoryId} onClick={() => goCategory(categoryId)}
-                    style={{ borderColor: "#E6E3DA" }}
-                    className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#1C1B19] bg-white border hover:border-[#26364A] transition-colors">
-                    <Icon size={14} style={{ color: col.text }} /> {label}
-                  </button>
-                );
-              })}
-              <Link href="/circles"
-                className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#1C1B19] bg-white border border-[#E6E3DA] hover:border-[#26364A] transition-colors">
-                <MapPin size={14} className="text-[#B08D45]" /> Local Parents
-              </Link>
+          /* Kept deliberately small: visitors arriving from social should see
+             real questions in their first screen, not just an intro. Category
+             shortcuts live in the pill row under the search bar. */
+          <div className="mb-6 flex gap-3 sm:gap-4 items-start sm:items-center bg-[#F4EEDF] border border-[#E7DCC0] px-4 py-3.5 sm:px-5 sm:py-4">
+            <div className="shrink-0"><RecessMark size={34} /></div>
+            <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-5">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-[16px] sm:text-[17px] font-semibold text-[#1C1B19] leading-snug">Parenting is full of questions.</h1>
+                <p className="text-[13px] text-[#5B584F] leading-snug mt-0.5">You don&apos;t have to figure them out alone. Ask parents who&apos;ve been there.</p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <button onClick={askQuestion}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-[#26364A] text-white text-[13px] font-semibold hover:bg-[#1e2c3d] transition-colors whitespace-nowrap">
+                  <Plus size={15} /> Ask a question
+                </button>
+                <Link href="/circles" className="text-[13px] font-medium text-[#26364A] hover:underline whitespace-nowrap">
+                  Find local parents &rarr;
+                </Link>
+              </div>
             </div>
-            <button onClick={askQuestion}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-[#26364A] text-white text-[14px] font-semibold hover:bg-[#1e2c3d] transition-colors">
-              <Plus size={16} /> Ask your question
-            </button>
           </div>
         )}
 
