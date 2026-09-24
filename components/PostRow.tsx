@@ -10,6 +10,7 @@ import { sharePost } from "@/lib/share";
 import { VoteControl } from "./VoteControl";
 import { TopicBadge } from "./TopicBadge";
 import { CircleBadge } from "./CircleBadge";
+import { NeedsAnswersBadge } from "./NeedsAnswersBadge";
 import { AuthorBadges } from "./Badges";
 import { Avatar } from "./Avatar";
 import { Briefcase } from "lucide-react";
@@ -56,6 +57,7 @@ export function PostRow({
           )}
           <TopicBadge topicId={post.topicId} onClick={(e) => { e.stopPropagation(); onTopic(post.topicId); }} />
           {post.circleId && post.circleName && <CircleBadge circleId={post.circleId} circleName={post.circleName} />}
+          {commentCount === 0 && <NeedsAnswersBadge />}
         </div>
         <h3 className="text-[18px] font-semibold leading-snug text-[#1C1B19] mb-1 group-hover:text-[#26364A] transition-colors">
           {post.title}
