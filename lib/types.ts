@@ -37,6 +37,8 @@ export interface Circle {
   country: string | null;
   imageUrl: string | null;
   videoUrl: string | null;
+  /** Profile picture for the circle; set by admins. */
+  avatarUrl: string | null;
   createdBy: string;
   pinnedPostId: string | null;
   memberCount: number;

@@ -7,6 +7,7 @@ import { placeLabel } from "@/lib/location";
 import { useAuth } from "@/lib/auth-context";
 import type { Circle } from "@/lib/types";
 import { CreateCircleModal, type NewCircleInput } from "@/components/CreateCircleModal";
+import { CircleAvatar } from "@/components/CircleAvatar";
 
 export default function CirclesPage() {
   const router = useRouter();
@@ -84,6 +85,9 @@ export default function CirclesPage() {
             const isMember = myCircleIds.includes(c.id);
             return (
               <div key={c.id} className="border border-[#E6E3DA] bg-white p-4 flex items-start gap-4">
+                <button onClick={() => router.push(`/circles/${c.id}`)} aria-label={`Open ${c.name}`} className="shrink-0">
+                  <CircleAvatar name={c.name} url={c.avatarUrl} size={44} />
+                </button>
                 <div className="min-w-0 flex-1 cursor-pointer" onClick={() => router.push(`/circles/${c.id}`)}>
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="text-[15px] font-semibold text-[#1C1B19]">{c.name}</h3>

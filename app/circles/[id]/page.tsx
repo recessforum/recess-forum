@@ -9,6 +9,7 @@ import type { Circle, Comment, Post, Promo } from "@/lib/types";
 import { PostRow } from "@/components/PostRow";
 import { NewPostModal } from "@/components/NewPostModal";
 import { MediaView } from "@/components/MediaPicker";
+import { CircleAvatar, CircleAvatarEditor } from "@/components/CircleAvatar";
 import { placeLabel } from "@/lib/location";
 
 export default function CircleDetailPage() {
@@ -128,7 +129,18 @@ export default function CircleDetailPage() {
       </button>
 
       <div className="pb-6 mb-6 border-b border-[#E6E3DA]">
-        <h1 className="text-[22px] font-semibold text-[#1C1B19] mb-1.5">{circle.name}</h1>
+        <div className="flex items-center gap-3 mb-2">
+          <CircleAvatar name={circle.name} url={circle.avatarUrl} size={56} />
+          <div className="min-w-0">
+            <h1 className="text-[22px] font-semibold text-[#1C1B19] leading-tight">{circle.name}</h1>
+            {profile?.role === "admin" && (
+              <div className="mt-1">
+                <CircleAvatarEditor circleId={circle.id} url={circle.avatarUrl}
+                  onChange={(avatarUrl) => setCircle((c) => (c ? { ...c, avatarUrl } : c))} />
+              </div>
+            )}
+          </div>
+        </div>
         <p className="text-[14px] text-[#5B584F] leading-relaxed mb-3 whitespace-pre-line">{circle.description}</p>
         {(circle.imageUrl || circle.videoUrl) && (
           <div className="mb-4"><MediaView imageUrl={circle.imageUrl} videoUrl={circle.videoUrl} /></div>

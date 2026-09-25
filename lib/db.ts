@@ -358,13 +358,14 @@ interface CircleRow {
   country: string | null;
   image_url: string | null;
   video_url: string | null;
+  avatar_url: string | null;
   created_by: string;
   created_at: string;
   pinned_post_id: string | null;
   circle_memberships: { count: number }[] | null;
 }
 
-const CIRCLE_SELECT = "id, name, description, state, country, image_url, video_url, created_by, created_at, pinned_post_id, circle_memberships(count)";
+const CIRCLE_SELECT = "id, name, description, state, country, image_url, video_url, avatar_url, created_by, created_at, pinned_post_id, circle_memberships(count)";
 
 function toCircle(row: CircleRow): Circle {
   return {
@@ -375,6 +376,7 @@ function toCircle(row: CircleRow): Circle {
     country: row.country,
     imageUrl: row.image_url,
     videoUrl: row.video_url,
+    avatarUrl: row.avatar_url,
     createdBy: row.created_by,
     pinnedPostId: row.pinned_post_id,
     memberCount: row.circle_memberships?.[0]?.count ?? 0,
@@ -409,6 +411,12 @@ export async function createCircle(
     .single();
   if (error) throw error;
   return toCircle(data as unknown as CircleRow);
+}
+
+export async function setCircleAvatar(supabase: SupabaseClient, circleId: string, avatarUrl: string | null): Promise<void> {
+  const { data, error } = await supabase.from("circles").update({ avatar_url: avatarUrl }).eq("id", circleId).select("id");
+  if (error) throw error;
+  if (!data?.length) throw new Error("circle not found or not authorized");
 }
 
 export async function setCirclePin(supabase: SupabaseClient, circleId: string, postId: string | null): Promise<void> {
