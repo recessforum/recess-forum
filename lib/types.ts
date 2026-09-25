@@ -81,7 +81,7 @@ export interface PublicProfile {
   avatarUrl: string | null;
   role: ProfileRole;
   expertType: string | null;
-  accountType: "parent" | "provider" | null;
+  accountType: "parent" | "provider" | "expert" | null;
   foundingNumber: number | null;
   createdAt: number;
 }

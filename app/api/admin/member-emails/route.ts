@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/db";
 import { createClient } from "@/lib/supabase/server";
 
-const SCOPES = ["founding", "parents", "providers", "unset", "all"] as const;
+const SCOPES = ["founding", "parents", "providers", "experts", "unset", "all"] as const;
 type Scope = (typeof SCOPES)[number];
 
 const csvCell = (v: unknown) => {

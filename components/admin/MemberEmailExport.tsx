@@ -8,6 +8,7 @@ const EXPORTS = [
   { scope: "founding", label: "Founding Parents" },
   { scope: "parents", label: "All parents" },
   { scope: "providers", label: "Business / service providers" },
+  { scope: "experts", label: "Professionals / experts" },
   { scope: "unset", label: "Not chosen yet" },
 ] as const;
 

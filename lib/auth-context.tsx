@@ -14,7 +14,7 @@ export interface AuthProfile {
   role: "member" | "verified_expert" | "admin";
   expert_type: string | null;
   avatar_url: string | null;
-  account_type: "parent" | "provider" | null;
+  account_type: "parent" | "provider" | "expert" | null;
   founding_number: number | null;
 }
 

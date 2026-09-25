@@ -5,45 +5,33 @@ import type { AccountType } from "@/lib/account-type";
 
 const OPTIONS: { type: AccountType; label: string; hint: string; icon: typeof Users }[] = [
   { type: "parent", label: "I'm a parent", hint: "Or a guardian or caregiver", icon: Users },
-  { type: "provider", label: "Business / service provider", hint: "Tutor, counselor, therapist, school, etc.", icon: Briefcase },
+  { type: "provider", label: "Business / service provider", hint: "Tutoring center, school, camp, program, etc.", icon: Briefcase },
+  { type: "expert", label: "Professional / expert", hint: "Teacher, counselor, therapist, consultant. Apply for a Verified Expert badge.", icon: BadgeCheck },
 ];
 
-export function AccountTypeChoice({
-  value,
-  onChange,
-  wantsExpert,
-  onWantsExpertChange,
-}: {
-  value: AccountType | null;
-  onChange: (t: AccountType) => void;
-  /** Pass both to offer "apply to become a Verified Expert" for providers. */
-  wantsExpert?: boolean;
-  onWantsExpertChange?: (wants: boolean) => void;
-}) {
+export function AccountTypeChoice({ value, onChange }: { value: AccountType | null; onChange: (t: AccountType) => void }) {
   return (
     <div>
       <div className="text-[12px] font-medium text-[#5B584F] mb-1.5">Which describes you?</div>
-      <div className="grid grid-cols-2 gap-2" role="radiogroup">
+      <div className="flex flex-col gap-2" role="radiogroup">
         {OPTIONS.map(({ type, label, hint, icon: Icon }) => {
           const selected = value === type;
           return (
             <button key={type} type="button" role="radio" aria-checked={selected} onClick={() => onChange(type)}
-              className={`flex flex-col items-start justify-start text-left px-3 py-2.5 border transition-colors ${selected ? "border-[#26364A] bg-white ring-1 ring-[#26364A]" : "border-[#E6E3DA] bg-[#FAF9F7] hover:border-[#26364A]"}`}>
-              <Icon size={15} className={selected ? "text-[#26364A]" : "text-[#9A968A]"} />
-              <div className="text-[13px] font-semibold text-[#1C1B19] mt-1 leading-tight">{label}</div>
-              <div className="text-[11px] text-[#9A968A] mt-0.5 leading-snug">{hint}</div>
+              className={`flex items-start gap-3 text-left px-3 py-2.5 border transition-colors ${selected ? "border-[#26364A] bg-white ring-1 ring-[#26364A]" : "border-[#E6E3DA] bg-[#FAF9F7] hover:border-[#26364A]"}`}>
+              <Icon size={16} className={`mt-0.5 shrink-0 ${selected ? "text-[#26364A]" : "text-[#9A968A]"}`} />
+              <span className="min-w-0">
+                <span className="block text-[13px] font-semibold text-[#1C1B19] leading-tight">{label}</span>
+                <span className="block text-[11px] text-[#9A968A] mt-0.5 leading-snug">{hint}</span>
+              </span>
             </button>
           );
         })}
       </div>
-      {value === "provider" && onWantsExpertChange && (
-        <label className="mt-2 flex items-start gap-2 px-3 py-2.5 bg-[#E4F2F1] cursor-pointer">
-          <input type="checkbox" checked={!!wantsExpert} onChange={(e) => onWantsExpertChange(e.target.checked)} className="mt-0.5 shrink-0" />
-          <span className="text-[12px] leading-snug text-[#1C1B19]">
-            <span className="font-semibold inline-flex items-center gap-1"><BadgeCheck size={13} className="text-[#217A78]" /> I&apos;d also like to apply to become a Verified Expert</span>
-            <span className="block text-[#5B584F] mt-0.5">After signup we&apos;ll ask for your credentials. Approved experts get a badge showing their specialty.</span>
-          </span>
-        </label>
+      {value === "expert" && (
+        <p className="mt-2 px-3 py-2 bg-[#E4F2F1] text-[12px] leading-snug text-[#1C1B19]">
+          After signup we&apos;ll ask for your credentials. Approved experts get a Verified Expert badge showing their specialty.
+        </p>
       )}
       <div className="mt-2.5 text-[12px] leading-relaxed text-[#5B584F]">
         <p className="flex items-start gap-1.5">

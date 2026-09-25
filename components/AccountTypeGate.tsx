@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import {
-  claimAccountType, submitExpertApplication, takePendingAccountType, takePendingWantsExpert, type AccountType,
+  claimAccountType, submitExpertApplication, takePendingAccountType, type AccountType,
 } from "@/lib/account-type";
 import { AccountTypeChoice } from "./AccountTypeChoice";
 import { ExpertApplicationModal } from "./ExpertApplicationModal";
@@ -15,13 +15,12 @@ import { ExpertApplicationModal } from "./ExpertApplicationModal";
    localStorage or through email confirmation in user_metadata) are claimed
    silently here; anyone else (accounts from before this existed, or someone
    who signed up from the login page with Google/Apple) is asked once.
-   A provider who asked to apply for Verified Expert gets the application
-   form right after. */
+   Anyone who picks "Professional / expert" gets the Verified Expert
+   application form right after. */
 export function AccountTypeGate() {
   const { profile, refreshProfile } = useAuth();
   const [asking, setAsking] = useState(false);
   const [choice, setChoice] = useState<AccountType | null>(null);
-  const [wantsExpert, setWantsExpert] = useState(false);
   const [showExpertApp, setShowExpertApp] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,18 +33,16 @@ export function AccountTypeGate() {
     tried.current = true;
     (async () => {
       let pending = takePendingAccountType();
-      let expert = takePendingWantsExpert();
       if (!pending) {
         const { data } = await createClient().auth.getUser();
-        const meta = data.user?.user_metadata;
-        if (meta?.account_type === "parent" || meta?.account_type === "provider") pending = meta.account_type;
-        expert = expert || meta?.wants_expert === true;
+        const meta = data.user?.user_metadata?.account_type;
+        if (meta === "parent" || meta === "provider" || meta === "expert") pending = meta;
       }
       if (pending) {
         try {
           await claimAccountType(pending);
           await refreshProfile();
-          if (pending === "provider" && expert) setShowExpertApp(true);
+          if (pending === "expert") setShowExpertApp(true);
           return;
         } catch { /* fall through and ask */ }
       }
@@ -61,7 +58,7 @@ export function AccountTypeGate() {
       await claimAccountType(choice);
       await refreshProfile();
       setAsking(false);
-      if (choice === "provider" && wantsExpert) setShowExpertApp(true);
+      if (choice === "expert") setShowExpertApp(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     }
@@ -80,7 +77,7 @@ export function AccountTypeGate() {
         className="w-full sm:max-w-sm bg-white p-5 sm:p-6 shadow-xl">
         <h2 id="account-type-title" className="text-[17px] font-semibold text-[#1C1B19] mb-1">One quick question</h2>
         <p className="text-[13px] text-[#5B584F] mb-4">This helps us keep Recess Forum a place for parents. You&apos;ll only be asked once.</p>
-        <AccountTypeChoice value={choice} onChange={setChoice} wantsExpert={wantsExpert} onWantsExpertChange={setWantsExpert} />
+        <AccountTypeChoice value={choice} onChange={setChoice} />
         {error && <p className="text-[13px] text-[#B23B3B] mt-3">{error}</p>}
         <button disabled={!choice || saving} onClick={save}
           className="mt-4 w-full px-4 py-2.5 text-[14px] font-semibold bg-[#26364A] text-white disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-[#1e2c3d] transition-colors">
