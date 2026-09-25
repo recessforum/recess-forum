@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { startOAuth } from "@/lib/oauth";
 import { AppleLogo } from "@/components/AppleLogo";
 import { AccountTypeChoice } from "@/components/AccountTypeChoice";
-import { setPendingAccountType, type AccountType } from "@/lib/account-type";
+import { setPendingAccountType, setPendingWantsExpert, type AccountType } from "@/lib/account-type";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -18,6 +18,8 @@ export default function SignupPage() {
   const [done, setDone] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
+  const [wantsExpert, setWantsExpert] = useState(false);
+  const applyingExpert = accountType === "provider" && wantsExpert;
   const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(null);
 
   const inputClass = "w-full px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A] transition-colors";
@@ -28,6 +30,7 @@ export default function SignupPage() {
     if (!ready) return;
     setError(null);
     setPendingAccountType(accountType!);
+    setPendingWantsExpert(applyingExpert);
     setOauthLoading(provider);
     try {
       await startOAuth(provider, () => setOauthLoading(null));
@@ -42,12 +45,13 @@ export default function SignupPage() {
     setError(null);
     setSending(true);
     setPendingAccountType(accountType!);
+    setPendingWantsExpert(applyingExpert);
     const supabase = createClient();
     const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
-        data: { display_name: nickname.trim(), account_type: accountType },
+        data: { display_name: nickname.trim(), account_type: accountType, wants_expert: applyingExpert },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -74,7 +78,7 @@ export default function SignupPage() {
       <p className="text-[13px] text-[#9A968A] mb-6">Join the conversation — post under a nickname if you&apos;d rather not use your name.</p>
 
       <div className="mb-5">
-        <AccountTypeChoice value={accountType} onChange={setAccountType} />
+        <AccountTypeChoice value={accountType} onChange={setAccountType} wantsExpert={wantsExpert} onWantsExpertChange={setWantsExpert} />
       </div>
 
       <label className="flex items-start gap-2 mb-4 cursor-pointer">

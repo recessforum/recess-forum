@@ -7,6 +7,7 @@ export type AccountType = "parent" | "provider";
    Email signups also carry it in user_metadata; OAuth ones rely on this key.
    AccountTypeGate reads either and claims it once the user is signed in. */
 const PENDING_KEY = "recess-forum:pending-account-type";
+const EXPERT_KEY = "recess-forum:wants-expert";
 
 export function setPendingAccountType(type: AccountType) {
   try { localStorage.setItem(PENDING_KEY, type); } catch { /* private mode: the gate will just ask */ }
@@ -20,6 +21,34 @@ export function takePendingAccountType(): AccountType | null {
   } catch {
     return null;
   }
+}
+
+/* Whether the person asked, at signup, to apply for Verified Expert. Carried
+   the same way as the account type; the gate opens the application after. */
+export function setPendingWantsExpert(wants: boolean) {
+  try {
+    if (wants) localStorage.setItem(EXPERT_KEY, "1");
+    else localStorage.removeItem(EXPERT_KEY);
+  } catch { /* ignore */ }
+}
+
+export function takePendingWantsExpert(): boolean {
+  try {
+    const v = localStorage.getItem(EXPERT_KEY) === "1";
+    localStorage.removeItem(EXPERT_KEY);
+    return v;
+  } catch {
+    return false;
+  }
+}
+
+export async function submitExpertApplication(input: { expertType: string; credentialInfo: string; filePath: string | null }) {
+  const res = await fetch("/api/expert-applications", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn't send your application. Please try again.");
 }
 
 /** Sets the signed-in user's account type (once) and, for parents, assigns a

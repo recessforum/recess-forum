@@ -10,6 +10,7 @@ import { ExpertApplicationModal } from "./ExpertApplicationModal";
 import { LoginRequiredModal } from "./LoginRequiredModal";
 import { Avatar } from "./Avatar";
 import { useAuth } from "@/lib/auth-context";
+import { submitExpertApplication } from "@/lib/account-type";
 import { createClient } from "@/lib/supabase/client";
 import type { Promo } from "@/lib/types";
 
@@ -30,14 +31,6 @@ export function Header() {
     if (!res.ok) throw new Error(data.error || "Something went wrong. Please try again.");
     setShowNewPost(false);
     router.push(`/post/${data.post.id}`);
-  };
-
-  const handleExpertApplication = async (input: { expertType: string; credentialInfo: string; filePath: string | null }) => {
-    await fetch("/api/expert-applications", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
   };
 
   const logout = async () => {
@@ -104,7 +97,7 @@ export function Header() {
         <NewPostModal defaultTopic={null} onClose={() => setShowNewPost(false)} onSubmit={handleNewPost} />
       )}
       {showExpertApp && profile && (
-        <ExpertApplicationModal onClose={() => setShowExpertApp(false)} onSubmit={handleExpertApplication} />
+        <ExpertApplicationModal onClose={() => setShowExpertApp(false)} onSubmit={submitExpertApplication} />
       )}
       {showLoginRequired && (
         <LoginRequiredModal onClose={() => setShowLoginRequired(false)} />

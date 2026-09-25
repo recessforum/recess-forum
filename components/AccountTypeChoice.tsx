@@ -1,6 +1,6 @@
 "use client";
 
-import { Briefcase, Sparkles, Users } from "lucide-react";
+import { BadgeCheck, Briefcase, Sparkles, Users } from "lucide-react";
 import type { AccountType } from "@/lib/account-type";
 
 const OPTIONS: { type: AccountType; label: string; hint: string; icon: typeof Users }[] = [
@@ -8,7 +8,18 @@ const OPTIONS: { type: AccountType; label: string; hint: string; icon: typeof Us
   { type: "provider", label: "Business / service provider", hint: "Tutor, counselor, therapist, school, etc.", icon: Briefcase },
 ];
 
-export function AccountTypeChoice({ value, onChange }: { value: AccountType | null; onChange: (t: AccountType) => void }) {
+export function AccountTypeChoice({
+  value,
+  onChange,
+  wantsExpert,
+  onWantsExpertChange,
+}: {
+  value: AccountType | null;
+  onChange: (t: AccountType) => void;
+  /** Pass both to offer "apply to become a Verified Expert" for providers. */
+  wantsExpert?: boolean;
+  onWantsExpertChange?: (wants: boolean) => void;
+}) {
   return (
     <div>
       <div className="text-[12px] font-medium text-[#5B584F] mb-1.5">Which describes you?</div>
@@ -25,6 +36,15 @@ export function AccountTypeChoice({ value, onChange }: { value: AccountType | nu
           );
         })}
       </div>
+      {value === "provider" && onWantsExpertChange && (
+        <label className="mt-2 flex items-start gap-2 px-3 py-2.5 bg-[#E4F2F1] cursor-pointer">
+          <input type="checkbox" checked={!!wantsExpert} onChange={(e) => onWantsExpertChange(e.target.checked)} className="mt-0.5 shrink-0" />
+          <span className="text-[12px] leading-snug text-[#1C1B19]">
+            <span className="font-semibold inline-flex items-center gap-1"><BadgeCheck size={13} className="text-[#217A78]" /> I&apos;d also like to apply to become a Verified Expert</span>
+            <span className="block text-[#5B584F] mt-0.5">After signup we&apos;ll ask for your credentials. Approved experts get a badge showing their specialty.</span>
+          </span>
+        </label>
+      )}
       <div className="mt-2.5 text-[12px] leading-relaxed text-[#5B584F]">
         <p className="flex items-start gap-1.5">
           <Sparkles size={12} className="text-[#B08D45] mt-[3px] shrink-0" />

@@ -68,7 +68,13 @@ export function ExpertApplicationModal({
       }
     }
 
-    await onSubmit({ expertType, credentialInfo: credentialInfo.trim(), filePath });
+    try {
+      await onSubmit({ expertType, credentialInfo: credentialInfo.trim(), filePath });
+    } catch (err) {
+      setFileError(err instanceof Error ? err.message : "Couldn't send your application. Please try again.");
+      setSaving(false);
+      return;
+    }
     setSaving(false);
     setDone(true);
   };
