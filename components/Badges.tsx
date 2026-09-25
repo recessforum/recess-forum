@@ -32,11 +32,11 @@ export function RoleBadge({ role }: { role: Role | null }) {
   );
 }
 
-export function FoundingBadge({ number }: { number?: number | null }) {
+export function FoundingBadge() {
   return (
     <span title="One of the first 500 parents to join Recess Forum"
       className="inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-sm bg-[#F5EFDD] text-[#B08D45]">
-      <Sparkles size={11} /> Founding Parent{number ? ` #${number}` : ""}
+      <Sparkles size={11} /> Founding Parent
     </span>
   );
 }
@@ -48,14 +48,15 @@ export function AuthorBadges({
 }: {
   tier: Parameters<typeof TierBadge>[0]["tier"];
   role: Role | null;
-  /** The profile's founding number (1..500), or null/undefined if not a Founding Parent. */
+  /** The author's founding number, or null/undefined if not a Founding Parent.
+   *  Only used to decide whether to show the badge; the number itself isn't shown. */
   founding?: number | null;
 }) {
   if (!tier && !role && !founding) return null;
   return (
     <span className="inline-flex items-center gap-1">
       <RoleBadge role={role} />
-      {founding ? <FoundingBadge number={founding} /> : null}
+      {founding ? <FoundingBadge /> : null}
       <TierBadge tier={tier} />
     </span>
   );

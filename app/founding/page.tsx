@@ -23,7 +23,7 @@ export default async function FoundingPage() {
       </h1>
       <p className="text-[14px] text-[#5B584F] leading-relaxed mb-8">
         Every community starts with the people who show up first. The first {status.cap} parents to
-        join Recess Forum get a permanent, numbered Founding Parent badge on their profile, a mark
+        join Recess Forum get a permanent Founding Parent badge on their profile, a mark
         that they were here from the start, asking the questions and giving the answers that
         shaped what this place became.
       </p>
@@ -53,7 +53,7 @@ export default async function FoundingPage() {
       <div className="border-t border-[#E6E3DA] pt-6">
         <h2 className="text-[15px] font-semibold text-[#1C1B19] mb-2">What Founding Parents get</h2>
         <ul className="text-[13px] text-[#5B584F] leading-relaxed list-disc pl-5 flex flex-col gap-1.5">
-          <li>A permanent, numbered Founding Parent badge on their profile</li>
+          <li>A permanent Founding Parent badge on their profile</li>
           <li>First say in what topics, circles, and features come next</li>
           <li>A direct line: we read and respond to founding members&apos; feedback ourselves</li>
         </ul>
