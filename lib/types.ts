@@ -14,6 +14,8 @@ export interface Post {
   authorRole: ProfileRole;
   authorExpertType: string | null;
   authorAvatarUrl: string | null;
+  /** Author's Founding Parent number (1..500), if any. */
+  authorFoundingNumber: number | null;
   topicId: string;
   state: string | null;
   /** ISO 3166 alpha-2; "US" for US posts (which also carry a state). */
@@ -54,6 +56,8 @@ export interface Comment {
   authorRole: ProfileRole;
   authorExpertType: string | null;
   authorAvatarUrl: string | null;
+  /** Author's Founding Parent number (1..500), if any. */
+  authorFoundingNumber: number | null;
   body: string;
   imageUrl: string | null;
   videoUrl: string | null;

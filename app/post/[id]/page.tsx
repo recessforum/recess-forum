@@ -265,7 +265,7 @@ export default function PostDetailPage() {
           <Avatar url={post.authorAvatarUrl} name={post.author} size={20} />
           <span>{post.author}</span>
         </Link>
-        <AuthorBadges {...badgesFor(post)} />
+        <AuthorBadges {...badgesFor(post)} founding={post.authorFoundingNumber} />
         <span className="text-[#26364A] font-medium">· {karma(post.authorId)} karma</span>
         {placeLabel(post.state, post.country) && (
           <span className="flex items-center gap-0.5">· <MapPin size={12} className="ml-1" /> {placeLabel(post.state, post.country)}</span>

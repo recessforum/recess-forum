@@ -19,6 +19,7 @@ interface ProfileEmbed {
   role: ProfileRole;
   expert_type: string | null;
   avatar_url: string | null;
+  founding_number: number | null;
 }
 
 interface CircleEmbed {
@@ -62,9 +63,9 @@ interface CommentRow {
 // second, indirect path to profiles (through post_views / votes), so a bare
 // `profiles(...)` embed is rejected by PostgREST as ambiguous (PGRST201).
 const POST_SELECT =
-  "id, author_id, title, body, topic_id, state, country, promo_label, promo_url, image_url, video_url, score, views, created_at, circle_id, circles!posts_circle_id_fkey(name), profiles!posts_author_id_fkey(display_name, role, expert_type, avatar_url)";
+  "id, author_id, title, body, topic_id, state, country, promo_label, promo_url, image_url, video_url, score, views, created_at, circle_id, circles!posts_circle_id_fkey(name), profiles!posts_author_id_fkey(display_name, role, expert_type, avatar_url, founding_number)";
 const COMMENT_SELECT =
-  "id, post_id, parent_id, author_id, body, image_url, video_url, score, created_at, profiles!comments_author_id_fkey(display_name, role, expert_type, avatar_url)";
+  "id, post_id, parent_id, author_id, body, image_url, video_url, score, created_at, profiles!comments_author_id_fkey(display_name, role, expert_type, avatar_url, founding_number)";
 
 function embedProfile(p: PostRow["profiles"]): ProfileEmbed | null {
   return Array.isArray(p) ? p[0] ?? null : p;
@@ -82,6 +83,7 @@ function toPost(row: PostRow): Post {
     authorRole: profile?.role ?? "member",
     authorExpertType: profile?.expert_type ?? null,
     authorAvatarUrl: profile?.avatar_url ?? null,
+    authorFoundingNumber: profile?.founding_number ?? null,
     topicId: row.topic_id,
     state: row.state,
     country: row.country ?? "US",
@@ -107,6 +109,7 @@ function toComment(row: CommentRow): Comment {
     authorRole: profile?.role ?? "member",
     authorExpertType: profile?.expert_type ?? null,
     authorAvatarUrl: profile?.avatar_url ?? null,
+    authorFoundingNumber: profile?.founding_number ?? null,
     body: row.body,
     imageUrl: row.image_url,
     videoUrl: row.video_url,

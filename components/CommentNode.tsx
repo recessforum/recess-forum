@@ -59,7 +59,7 @@ export function CommentNode({
             <Avatar url={comment.authorAvatarUrl} name={comment.author} size={18} />
             <span className="font-semibold text-[#1C1B19]">{comment.author}</span>
           </Link>
-          <AuthorBadges {...badgesFor(comment)} />
+          <AuthorBadges {...badgesFor(comment)} founding={comment.authorFoundingNumber} />
           <span className="text-[12px] text-[#9A968A]">{timeAgo(comment.createdAt)}</span>
           <AuthorMenu targetType="comment" targetId={comment.id} authorId={comment.authorId} authorName={comment.author} onBlocked={onBlocked} />
         </div>

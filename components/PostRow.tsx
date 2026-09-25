@@ -83,7 +83,7 @@ export function PostRow({
             <Avatar url={post.authorAvatarUrl} name={post.author} size={18} />
             <span>{post.author}</span>
           </Link>
-          <AuthorBadges {...badgesFor(post)} />
+          <AuthorBadges {...badgesFor(post)} founding={post.authorFoundingNumber} />
           {placeLabel(post.state, post.country) && (
             <span className="flex items-center gap-0.5">
               <MapPin size={11} /> {placeLabel(post.state, post.country)}
