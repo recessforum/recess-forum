@@ -19,6 +19,14 @@ export async function startOAuth(provider: "google" | "apple", onClosed: () => v
     return;
   }
 
+  // App builds from before the in-app browser was added (Android builds up to
+  // 1.0 / versionCode 1) don't include the Browser plugin, and Google blocks
+  // sign-in inside the app's own webview, so there's no working fallback.
+  // Say so plainly instead of surfacing the plugin error.
+  if (!Capacitor.isPluginAvailable("Browser")) {
+    throw new Error(`Signing in with ${provider === "google" ? "Google" : "Apple"} needs the latest version of the Recess Forum app. Please update the app, or log in with your email and password for now.`);
+  }
+
   const { data, error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo, skipBrowserRedirect: true } });
   if (error || !data.url) throw error ?? new Error("no sign-in url");
   const finished = await Browser.addListener("browserFinished", () => {

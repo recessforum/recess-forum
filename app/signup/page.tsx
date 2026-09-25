@@ -32,8 +32,7 @@ export default function SignupPage() {
     try {
       await startOAuth(provider, () => setOauthLoading(null));
     } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      setError(`Something went wrong: ${detail}`);
+      setError(err instanceof Error ? err.message : `Something went wrong: ${String(err)}`);
       setOauthLoading(null);
     }
   };
