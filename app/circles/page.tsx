@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, MapPin, Plus, Users } from "lucide-react";
+import { placeLabel } from "@/lib/location";
 import { useAuth } from "@/lib/auth-context";
 import type { Circle } from "@/lib/types";
-import { CreateCircleModal } from "@/components/CreateCircleModal";
+import { CreateCircleModal, type NewCircleInput } from "@/components/CreateCircleModal";
 
 export default function CirclesPage() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function CirclesPage() {
     setJoiningId(null);
   };
 
-  const handleCreate = async (input: { name: string; description: string; state: string | null }) => {
+  const handleCreate = async (input: NewCircleInput) => {
     const res = await fetch("/api/circles", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -86,9 +87,9 @@ export default function CirclesPage() {
                 <div className="min-w-0 flex-1 cursor-pointer" onClick={() => router.push(`/circles/${c.id}`)}>
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="text-[15px] font-semibold text-[#1C1B19]">{c.name}</h3>
-                    {c.state && (
+                    {placeLabel(c.state, c.country) && (
                       <span className="flex items-center gap-0.5 text-[12px] text-[#9A968A]">
-                        <MapPin size={11} /> {c.state}
+                        <MapPin size={11} /> {placeLabel(c.state, c.country)}
                       </span>
                     )}
                   </div>

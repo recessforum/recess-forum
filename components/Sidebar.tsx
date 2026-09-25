@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, Info, MapPin } from "lucide-react";
 import { CATEGORIES, colorForCategory, type Category, type Topic } from "@/lib/taxonomy";
-import { US_STATES } from "@/lib/location";
+import { COUNTRIES, US_STATES, placeName } from "@/lib/location";
 import type { Post } from "@/lib/types";
 
 const NEW_TAG_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -95,7 +95,7 @@ export function Sidebar({
 
   const nationwide = CATEGORIES.filter((c) => c.scope === "nationwide");
   const local = CATEGORIES.filter((c) => c.scope === "local");
-  const stateName = selectedState ? US_STATES.find((s) => s.code === selectedState)?.name : null;
+  const stateName = placeName(selectedState);
 
   return (
     <aside className="w-60 shrink-0 hidden drawer:flex flex-col max-h-[calc(100vh-140px)] overflow-y-auto pr-2">
@@ -127,7 +127,7 @@ export function Sidebar({
         ) : (
           <div>
             <p className="text-[11px] text-[#9A968A] leading-snug mb-1.5">
-              Showing posts from every state. Only want to see posts from where you live? Select your state below.
+              Showing posts from everywhere. Only want posts from where you live? Pick your state or country below.
             </p>
             <div className="relative">
               <MapPin size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#9A968A] pointer-events-none" />
@@ -135,8 +135,13 @@ export function Sidebar({
                 onChange={(e) => { onSelectState(e.target.value || null); setEditingState(false); }}
                 onBlur={() => setEditingState(false)}
                 className="w-full pl-6 pr-2 py-1.5 text-[12px] border border-[#E6E3DA] bg-white outline-none appearance-none">
-                <option value="">All states</option>
-                {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+                <option value="">All locations</option>
+                <optgroup label="United States">
+                  {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+                </optgroup>
+                <optgroup label="Outside the US">
+                  {COUNTRIES.map((c) => <option key={c.code} value={`c:${c.code}`}>{c.name}</option>)}
+                </optgroup>
               </select>
             </div>
           </div>

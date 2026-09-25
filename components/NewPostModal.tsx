@@ -1,17 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Briefcase, Loader2, Upload, Users, X } from "lucide-react";
+import { Briefcase, Loader2, Users, X } from "lucide-react";
 import { CATEGORIES } from "@/lib/taxonomy";
-import { US_STATES, zipToState } from "@/lib/location";
+import { decodePlace, zipToState } from "@/lib/location";
 import { useAuth } from "@/lib/auth-context";
-import { createClient } from "@/lib/supabase/client";
+import { uploadMedia } from "@/lib/media";
+import { LocationSelect } from "./LocationSelect";
+import { MediaPicker } from "./MediaPicker";
 import type { Promo } from "@/lib/types";
-
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50MB — the Supabase free-tier per-file cap
-const ALLOWED_IMAGE_TYPES: Record<string, true> = { "image/jpeg": true, "image/png": true, "image/webp": true };
-const ALLOWED_VIDEO_TYPES: Record<string, string> = { "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm" };
 
 export function NewPostModal({
   defaultTopic,
@@ -24,74 +21,31 @@ export function NewPostModal({
   circleId?: string | null;
   circleName?: string | null;
   onClose: () => void;
-  onSubmit: (input: { title: string; body: string | null; topicId: string; state: string; promo: Promo | null; circleId: string | null; imageUrl: string | null; videoUrl: string | null }) => Promise<void>;
+  onSubmit: (input: { title: string; body: string | null; topicId: string; state: string | null; country: string; promo: Promo | null; circleId: string | null; imageUrl: string | null; videoUrl: string | null }) => Promise<void>;
 }) {
   const { profile } = useAuth();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [zip, setZip] = useState("");
-  const [state, setState] = useState("");
+  const [place, setPlace] = useState(""); // encoded: "NY" or "c:AU"
   const [topicId, setTopicId] = useState(defaultTopic || CATEGORIES[0].topics[0].id);
   const [promoLabel, setPromoLabel] = useState("");
   const [promoUrl, setPromoUrl] = useState("");
-  const [image, setImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [video, setVideo] = useState<File | null>(null);
-  const [videoPreview, setVideoPreview] = useState<string | null>(null);
-  const [imageError, setImageError] = useState<string | null>(null);
+  const [media, setMedia] = useState<File | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const canSubmit = title.trim() && state && !saving;
+  const location = decodePlace(place);
+  const canSubmit = title.trim() && location && !saving;
   const inputClass = "w-full px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A] transition-colors";
   const isVerifiedExpert = profile?.role === "verified_expert";
-
-  const clearMedia = () => {
-    setImage(null);
-    setImagePreview(null);
-    setVideo(null);
-    setVideoPreview(null);
-  };
-
-  const handleMediaChange = (f: File | undefined) => {
-    if (!f) {
-      clearMedia();
-      setImageError(null);
-      return;
-    }
-    if (ALLOWED_VIDEO_TYPES[f.type]) {
-      if (f.size > MAX_VIDEO_BYTES) {
-        clearMedia();
-        setImageError("Video is too large (50MB max).");
-        return;
-      }
-      clearMedia();
-      setVideo(f);
-      setVideoPreview(URL.createObjectURL(f));
-      setImageError(null);
-      return;
-    }
-    if (!ALLOWED_IMAGE_TYPES[f.type]) {
-      clearMedia();
-      setImageError("Choose a JPG, PNG, or WEBP photo, or an MP4, MOV, or WEBM video.");
-      return;
-    }
-    if (f.size > MAX_IMAGE_BYTES) {
-      clearMedia();
-      setImageError("Image is too large (8MB max).");
-      return;
-    }
-    clearMedia();
-    setImage(f);
-    setImagePreview(URL.createObjectURL(f));
-    setImageError(null);
-  };
 
   const handleZipChange = (val: string) => {
     setZip(val);
     const digits = val.replace(/\D/g, "");
     if (digits.length >= 3) {
       const detected = zipToState(digits);
-      if (detected) setState(detected);
+      if (detected) setPlace(detected);
     }
   };
 
@@ -124,13 +78,10 @@ export function NewPostModal({
           </div>
           <div className="grid grid-cols-[1fr_1fr] gap-3">
             <div>
-              <label className="text-[12px] font-medium text-[#5B584F] block mb-1.5">
-                Current state <span className="text-[#B85A3A]">*</span>
+              <label htmlFor="post-location" className="text-[12px] font-medium text-[#5B584F] block mb-1.5">
+                Location <span className="text-[#B85A3A]">*</span>
               </label>
-              <select value={state} onChange={(e) => setState(e.target.value)} className={inputClass}>
-                <option value="">Select a state</option>
-                {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
-              </select>
+              <LocationSelect id="post-location" value={place} onChange={setPlace} placeholder="State or country" className={inputClass} />
             </div>
             <div>
               <label className="text-[12px] font-medium text-[#5B584F] block mb-1.5">
@@ -140,34 +91,14 @@ export function NewPostModal({
             </div>
           </div>
           <p className="text-[12px] text-[#9A968A] -mt-2">
-            We only ever show your state, never your zip — typing a zip just auto-fills the state for you.
+            We only show your state (or country), never your zip. A US zip just auto-fills the state. Outside the US? Pick your country.
           </p>
           <div>
             <label className="text-[12px] font-medium text-[#5B584F] block mb-1.5">
               Photo or video <span className="text-[#9A968A] font-normal">(optional)</span>
             </label>
-            {imagePreview || videoPreview ? (
-              <div className="relative">
-                {videoPreview ? (
-                  <video src={videoPreview} controls playsInline className="w-full max-h-56 bg-black" />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element -- local object URL preview before upload
-                  <img src={imagePreview!} alt="Selected" className="w-full max-h-56 object-contain bg-[#EFEDE6]" />
-                )}
-                <button onClick={() => handleMediaChange(undefined)}
-                  className="absolute top-2 right-2 p-1 bg-black/60 text-white hover:bg-black/80">
-                  <X size={14} />
-                </button>
-              </div>
-            ) : (
-              <label className="flex items-center gap-2 px-3 py-2.5 text-[13px] text-[#5B584F] cursor-pointer border border-dashed border-[#E6E3DA] bg-[#FAF9F7] hover:border-[#26364A] transition-colors">
-                <Upload size={15} />
-                Choose a photo or video
-                <input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" className="hidden"
-                  onChange={(e) => handleMediaChange(e.target.files?.[0])} />
-              </label>
-            )}
-            {imageError && <p className="text-[12px] text-[#B23B3B] mt-1.5">{imageError}</p>}
+            <MediaPicker file={media} onChange={setMedia} />
+            {mediaError && <p className="text-[12px] text-[#B23B3B] mt-1.5">{mediaError}</p>}
           </div>
           <div>
             <label className="text-[12px] font-medium text-[#5B584F] block mb-1.5">Topic</label>
@@ -201,36 +132,20 @@ export function NewPostModal({
               setSaving(true);
               setSubmitError(null);
 
-              let imageUrl: string | null = null;
-              if (image) {
-                const supabase = createClient();
-                const ext = image.type === "image/png" ? "png" : image.type === "image/webp" ? "webp" : "jpg";
-                const path = `${profile.id}/${Date.now()}.${ext}`;
-                const { error: uploadError } = await supabase.storage.from("post-images").upload(path, image);
-                if (uploadError) {
-                  setImageError(uploadError.message);
+              let urls = { imageUrl: null as string | null, videoUrl: null as string | null };
+              if (media) {
+                try {
+                  urls = await uploadMedia(profile.id, media);
+                } catch (err) {
+                  setMediaError(err instanceof Error ? err.message : "Upload failed. Please try again.");
                   setSaving(false);
                   return;
                 }
-                imageUrl = supabase.storage.from("post-images").getPublicUrl(path).data.publicUrl;
-              }
-
-              let videoUrl: string | null = null;
-              if (video) {
-                const supabase = createClient();
-                const path = `${profile.id}/${Date.now()}.${ALLOWED_VIDEO_TYPES[video.type]}`;
-                const { error: uploadError } = await supabase.storage.from("post-videos").upload(path, video, { contentType: video.type });
-                if (uploadError) {
-                  setImageError(uploadError.message);
-                  setSaving(false);
-                  return;
-                }
-                videoUrl = supabase.storage.from("post-videos").getPublicUrl(path).data.publicUrl;
               }
 
               const promo = isVerifiedExpert && promoLabel.trim() ? { label: promoLabel.trim(), url: promoUrl.trim() || null } : null;
               try {
-                await onSubmit({ title: title.trim(), body: body.trim() || null, topicId, state, promo, circleId, imageUrl, videoUrl });
+                await onSubmit({ title: title.trim(), body: body.trim() || null, topicId, state: location!.state, country: location!.country, promo, circleId, ...urls });
               } catch (err) {
                 setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
               }

@@ -32,6 +32,7 @@ interface PostRow {
   body: string | null;
   topic_id: string;
   state: string | null;
+  country: string;
   promo_label: string | null;
   promo_url: string | null;
   image_url: string | null;
@@ -50,6 +51,8 @@ interface CommentRow {
   parent_id: string | null;
   author_id: string;
   body: string;
+  image_url: string | null;
+  video_url: string | null;
   score: number;
   created_at: string;
   profiles: ProfileEmbed | ProfileEmbed[] | null;
@@ -59,9 +62,9 @@ interface CommentRow {
 // second, indirect path to profiles (through post_views / votes), so a bare
 // `profiles(...)` embed is rejected by PostgREST as ambiguous (PGRST201).
 const POST_SELECT =
-  "id, author_id, title, body, topic_id, state, promo_label, promo_url, image_url, video_url, score, views, created_at, circle_id, circles!posts_circle_id_fkey(name), profiles!posts_author_id_fkey(display_name, role, expert_type, avatar_url)";
+  "id, author_id, title, body, topic_id, state, country, promo_label, promo_url, image_url, video_url, score, views, created_at, circle_id, circles!posts_circle_id_fkey(name), profiles!posts_author_id_fkey(display_name, role, expert_type, avatar_url)";
 const COMMENT_SELECT =
-  "id, post_id, parent_id, author_id, body, score, created_at, profiles!comments_author_id_fkey(display_name, role, expert_type, avatar_url)";
+  "id, post_id, parent_id, author_id, body, image_url, video_url, score, created_at, profiles!comments_author_id_fkey(display_name, role, expert_type, avatar_url)";
 
 function embedProfile(p: PostRow["profiles"]): ProfileEmbed | null {
   return Array.isArray(p) ? p[0] ?? null : p;
@@ -81,6 +84,7 @@ function toPost(row: PostRow): Post {
     authorAvatarUrl: profile?.avatar_url ?? null,
     topicId: row.topic_id,
     state: row.state,
+    country: row.country ?? "US",
     promo: row.promo_label ? { label: row.promo_label, url: row.promo_url } : null,
     imageUrl: row.image_url,
     videoUrl: row.video_url,
@@ -104,6 +108,8 @@ function toComment(row: CommentRow): Comment {
     authorExpertType: profile?.expert_type ?? null,
     authorAvatarUrl: profile?.avatar_url ?? null,
     body: row.body,
+    imageUrl: row.image_url,
+    videoUrl: row.video_url,
     score: row.score,
     createdAt: new Date(row.created_at).getTime(),
   };
@@ -144,7 +150,7 @@ export async function getComments(supabase: SupabaseClient, postId: string): Pro
 
 export async function createPost(
   supabase: SupabaseClient,
-  input: { title: string; body: string | null; topicId: string; state: string | null; promo: Promo | null; circleId: string | null; imageUrl: string | null; videoUrl: string | null },
+  input: { title: string; body: string | null; topicId: string; state: string | null; country: string; promo: Promo | null; circleId: string | null; imageUrl: string | null; videoUrl: string | null },
   authorId: string
 ): Promise<Post> {
   const { data, error } = await supabase
@@ -155,6 +161,7 @@ export async function createPost(
       body: input.body,
       topic_id: input.topicId,
       state: input.state,
+      country: input.country,
       promo_label: input.promo?.label ?? null,
       promo_url: input.promo?.url ?? null,
       image_url: input.imageUrl,
@@ -196,12 +203,12 @@ export async function addComment(
   supabase: SupabaseClient,
   postId: string,
   parentId: string | null,
-  input: { body: string },
+  input: { body: string; imageUrl: string | null; videoUrl: string | null },
   authorId: string
 ): Promise<Comment> {
   const { data, error } = await supabase
     .from("comments")
-    .insert({ post_id: postId, parent_id: parentId, author_id: authorId, body: input.body, score: 1 })
+    .insert({ post_id: postId, parent_id: parentId, author_id: authorId, body: input.body, image_url: input.imageUrl, video_url: input.videoUrl, score: 1 })
     .select(COMMENT_SELECT)
     .single();
   if (error) throw error;
@@ -348,13 +355,16 @@ interface CircleRow {
   name: string;
   description: string;
   state: string | null;
+  country: string | null;
+  image_url: string | null;
+  video_url: string | null;
   created_by: string;
   created_at: string;
   pinned_post_id: string | null;
   circle_memberships: { count: number }[] | null;
 }
 
-const CIRCLE_SELECT = "id, name, description, state, created_by, created_at, pinned_post_id, circle_memberships(count)";
+const CIRCLE_SELECT = "id, name, description, state, country, image_url, video_url, created_by, created_at, pinned_post_id, circle_memberships(count)";
 
 function toCircle(row: CircleRow): Circle {
   return {
@@ -362,6 +372,9 @@ function toCircle(row: CircleRow): Circle {
     name: row.name,
     description: row.description,
     state: row.state,
+    country: row.country,
+    imageUrl: row.image_url,
+    videoUrl: row.video_url,
     createdBy: row.created_by,
     pinnedPostId: row.pinned_post_id,
     memberCount: row.circle_memberships?.[0]?.count ?? 0,
@@ -383,12 +396,15 @@ export async function getCircle(supabase: SupabaseClient, id: string): Promise<C
 
 export async function createCircle(
   supabase: SupabaseClient,
-  input: { name: string; description: string; state: string | null },
+  input: { name: string; description: string; state: string | null; country: string | null; imageUrl: string | null; videoUrl: string | null },
   createdBy: string
 ): Promise<Circle> {
   const { data, error } = await supabase
     .from("circles")
-    .insert({ name: input.name, description: input.description, state: input.state, created_by: createdBy })
+    .insert({
+      name: input.name, description: input.description, state: input.state, country: input.country,
+      image_url: input.imageUrl, video_url: input.videoUrl, created_by: createdBy,
+    })
     .select(CIRCLE_SELECT)
     .single();
   if (error) throw error;

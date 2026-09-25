@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPost, isCircleMember } from "@/lib/db";
 import { containsViolentContent } from "@/lib/moderation";
+import { isValidCountry, isValidState } from "@/lib/location";
+import { isOwnMediaUrl } from "@/lib/media";
 import { createClient } from "@/lib/supabase/server";
 import type { Promo } from "@/lib/types";
 
@@ -8,7 +10,10 @@ interface NewPostBody {
   title: string;
   body: string | null;
   topicId: string;
-  state: string;
+  /** US state code; null/absent for posts outside the US. */
+  state: string | null;
+  /** ISO country code; defaults to "US". */
+  country?: string;
   promo: Promo | null;
   circleId?: string | null;
   imageUrl?: string | null;
@@ -21,8 +26,10 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "log in to post" }, { status: 401 });
 
   const data = (await req.json()) as NewPostBody;
-  if (!data.title?.trim() || !data.state) {
-    return NextResponse.json({ error: "title and state are required" }, { status: 400 });
+  const country = data.country || "US";
+  const state = country === "US" ? data.state : null;
+  if (!data.title?.trim() || !isValidCountry(country) || (country === "US" && !(state && isValidState(state)))) {
+    return NextResponse.json({ error: "a title and a location (US state or country) are required" }, { status: 400 });
   }
 
   const circleId = data.circleId || null;
@@ -30,10 +37,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "join the circle before posting in it" }, { status: 403 });
   }
 
-  // Videos must be the caller's own upload in the post-videos bucket, not an arbitrary URL.
+  // Media must be the caller's own upload, not an arbitrary URL.
   const videoUrl = data.videoUrl || null;
-  if (videoUrl && !videoUrl.startsWith(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/post-videos/${user.id}/`)) {
-    return NextResponse.json({ error: "invalid video" }, { status: 400 });
+  const imageUrl = data.imageUrl || null;
+  if ((videoUrl && !isOwnMediaUrl(videoUrl, user.id, "video")) || (imageUrl && !isOwnMediaUrl(imageUrl, user.id, "image"))) {
+    return NextResponse.json({ error: "invalid photo or video" }, { status: 400 });
   }
 
   const body = data.body?.trim() || null;
@@ -50,10 +58,11 @@ export async function POST(req: NextRequest) {
       title: data.title.trim(),
       body,
       topicId: data.topicId,
-      state: data.state,
+      state,
+      country,
       promo: data.promo || null,
       circleId,
-      imageUrl: data.imageUrl || null,
+      imageUrl,
       videoUrl,
     },
     user.id

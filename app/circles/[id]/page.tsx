@@ -8,6 +8,8 @@ import { roleFor, tierFor } from "@/lib/roles";
 import type { Circle, Comment, Post, Promo } from "@/lib/types";
 import { PostRow } from "@/components/PostRow";
 import { NewPostModal } from "@/components/NewPostModal";
+import { MediaView } from "@/components/MediaPicker";
+import { placeLabel } from "@/lib/location";
 
 export default function CircleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -78,7 +80,7 @@ export default function CircleDetailPage() {
     });
   };
 
-  const handleNewPost = async (input: { title: string; body: string | null; topicId: string; state: string; promo: Promo | null; circleId: string | null; imageUrl: string | null; videoUrl: string | null }) => {
+  const handleNewPost = async (input: { title: string; body: string | null; topicId: string; state: string | null; country: string; promo: Promo | null; circleId: string | null; imageUrl: string | null; videoUrl: string | null }) => {
     const res = await fetch("/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -127,11 +129,14 @@ export default function CircleDetailPage() {
 
       <div className="pb-6 mb-6 border-b border-[#E6E3DA]">
         <h1 className="text-[22px] font-semibold text-[#1C1B19] mb-1.5">{circle.name}</h1>
-        <p className="text-[14px] text-[#5B584F] leading-relaxed mb-3">{circle.description}</p>
+        <p className="text-[14px] text-[#5B584F] leading-relaxed mb-3 whitespace-pre-line">{circle.description}</p>
+        {(circle.imageUrl || circle.videoUrl) && (
+          <div className="mb-4"><MediaView imageUrl={circle.imageUrl} videoUrl={circle.videoUrl} /></div>
+        )}
         <div className="flex items-center gap-3 text-[12px] text-[#9A968A] mb-4">
-          {circle.state && (
+          {placeLabel(circle.state, circle.country) && (
             <span className="flex items-center gap-1">
-              <MapPin size={12} /> {circle.state}
+              <MapPin size={12} /> {placeLabel(circle.state, circle.country)}
             </span>
           )}
           <span className="flex items-center gap-1">

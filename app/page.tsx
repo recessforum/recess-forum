@@ -7,6 +7,7 @@ import { Clock, Flame, Loader2, Plus, Search, Trophy } from "lucide-react";
 import { CATEGORIES, categoryOf, colorForCategory, topicById } from "@/lib/taxonomy";
 import { topicLabel } from "@/lib/taxonomy";
 import { hotScore, rangeCutoff } from "@/lib/ranking";
+import { decodePlace } from "@/lib/location";
 import { roleFor, tierFor } from "@/lib/roles";
 import type { Comment, Post } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
@@ -86,7 +87,7 @@ export default function HomePage() {
     [posts, comments]
   );
 
-  const handleNewPost = async (input: { title: string; body: string | null; topicId: string; state: string; promo: import("@/lib/types").Promo | null; circleId: string | null; imageUrl: string | null; videoUrl: string | null }) => {
+  const handleNewPost = async (input: { title: string; body: string | null; topicId: string; state: string | null; country: string; promo: import("@/lib/types").Promo | null; circleId: string | null; imageUrl: string | null; videoUrl: string | null }) => {
     const res = await fetch("/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -108,13 +109,15 @@ export default function HomePage() {
     setSelectedTopic(null);
   };
 
+  // selectedState holds an encoded place: a US state code ("NY") or a country ("c:AU").
+  const selectedPlace = useMemo(() => (selectedState ? decodePlace(selectedState) : null), [selectedState]);
   const filteredPosts = useMemo(() => {
     if (!posts) return [];
     const q = query.trim().toLowerCase();
     let list = posts.filter((p) => {
       if (selectedTopic && p.topicId !== selectedTopic) return false;
       if (!selectedTopic && selectedCategory && topicById(p.topicId)?.categoryId !== selectedCategory) return false;
-      if (selectedState && p.state !== selectedState) return false;
+      if (selectedPlace && (selectedPlace.country === "US" ? p.state !== selectedPlace.state : p.country !== selectedPlace.country)) return false;
       if (!q) return true;
       return `${p.title} ${p.body ?? ""} ${topicLabel(p.topicId)} ${p.author}`.toLowerCase().includes(q);
     });
@@ -127,7 +130,7 @@ export default function HomePage() {
       list = [...list].sort((a, b) => hotScore(b.score, b.views, b.createdAt) - hotScore(a.score, a.views, a.createdAt));
     }
     return list;
-  }, [posts, selectedTopic, selectedCategory, selectedState, sort, topRange, query]);
+  }, [posts, selectedTopic, selectedCategory, selectedPlace, sort, topRange, query]);
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 flex gap-10 w-full">

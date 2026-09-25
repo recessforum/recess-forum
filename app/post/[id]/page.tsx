@@ -18,6 +18,8 @@ import { AuthorBadges } from "@/components/Badges";
 import { Avatar } from "@/components/Avatar";
 import { AuthorMenu } from "@/components/AuthorMenu";
 import { CommentNode } from "@/components/CommentNode";
+import { ReplyComposer, type ReplyInput } from "@/components/ReplyComposer";
+import { placeLabel } from "@/lib/location";
 import { useAuth } from "@/lib/auth-context";
 import { sharePost as sharePostLink } from "@/lib/share";
 
@@ -35,9 +37,6 @@ export default function PostDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [commentSort, setCommentSort] = useState<"best" | "new">("best");
-  const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
-  const [replyError, setReplyError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
@@ -126,7 +125,7 @@ export default function PostDetailPage() {
     });
   };
 
-  const handleAddComment = async (postId: string, parentId: string | null, input: { body: string }) => {
+  const handleAddComment = async (postId: string, parentId: string | null, input: ReplyInput) => {
     if (!profile) { router.push("/login"); return; }
     const res = await fetch(`/api/posts/${postId}/comments`, {
       method: "POST",
@@ -195,19 +194,6 @@ export default function PostDetailPage() {
     const res = await fetch(`/api/posts/${post.id}`, { method: "DELETE" });
     if (res.ok) { router.push("/"); return; }
     setDeleting(false);
-  };
-
-  const submitTopLevel = async () => {
-    if (!text.trim() || !post) return;
-    setSending(true);
-    setReplyError(null);
-    try {
-      await handleAddComment(post.id, null, { body: text.trim() });
-      setText("");
-    } catch (err) {
-      setReplyError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
-    }
-    setSending(false);
   };
 
   if (notFound) {
@@ -281,8 +267,8 @@ export default function PostDetailPage() {
         </Link>
         <AuthorBadges {...badgesFor(post)} />
         <span className="text-[#26364A] font-medium">· {karma(post.authorId)} karma</span>
-        {post.state && (
-          <span className="flex items-center gap-0.5">· <MapPin size={12} className="ml-1" /> {post.state}</span>
+        {placeLabel(post.state, post.country) && (
+          <span className="flex items-center gap-0.5">· <MapPin size={12} className="ml-1" /> {placeLabel(post.state, post.country)}</span>
         )}
         <span>· {timeAgo(post.createdAt)} ago</span>
         <span className="flex items-center gap-0.5">· <Eye size={12} className="ml-1" /> {post.views || 0} views</span>
@@ -382,16 +368,7 @@ export default function PostDetailPage() {
 
       <div className="border-t border-[#E6E3DA] pt-5">
         {profile ? (
-          <>
-            <p className="text-[12px] text-[#9A968A] mb-1.5">Replying as {profile.display_name}</p>
-            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder="Add your reply..."
-              className="w-full mb-2 px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A] resize-none" />
-            {replyError && <p className="text-[12px] text-[#B23B3B] mb-2">{replyError}</p>}
-            <button disabled={!text.trim() || sending} onClick={submitTopLevel}
-              className="px-4 py-2 text-[14px] font-semibold bg-[#26364A] text-white disabled:opacity-40 flex items-center gap-2 hover:bg-[#1e2c3d] transition-colors">
-              {sending && <Loader2 size={14} className="animate-spin" />} Reply
-            </button>
-          </>
+          <ReplyComposer onSubmit={(input) => handleAddComment(post.id, null, input)} />
         ) : (
           <p className="text-[14px] text-[#5B584F]">
             <button onClick={() => router.push("/login")} className="text-[#26364A] font-semibold hover:underline">Log in</button> to reply.

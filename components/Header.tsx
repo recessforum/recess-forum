@@ -20,7 +20,7 @@ export function Header() {
   const [showExpertApp, setShowExpertApp] = useState(false);
   const [showLoginRequired, setShowLoginRequired] = useState(false);
 
-  const handleNewPost = async (input: { title: string; body: string | null; topicId: string; state: string; promo: Promo | null; circleId: string | null; imageUrl: string | null; videoUrl: string | null }) => {
+  const handleNewPost = async (input: { title: string; body: string | null; topicId: string; state: string | null; country: string; promo: Promo | null; circleId: string | null; imageUrl: string | null; videoUrl: string | null }) => {
     const res = await fetch("/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

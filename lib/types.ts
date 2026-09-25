@@ -16,6 +16,8 @@ export interface Post {
   authorAvatarUrl: string | null;
   topicId: string;
   state: string | null;
+  /** ISO 3166 alpha-2; "US" for US posts (which also carry a state). */
+  country: string;
   promo: Promo | null;
   imageUrl: string | null;
   videoUrl: string | null;
@@ -31,6 +33,10 @@ export interface Circle {
   name: string;
   description: string;
   state: string | null;
+  /** null when the circle isn't tied to a place. */
+  country: string | null;
+  imageUrl: string | null;
+  videoUrl: string | null;
   createdBy: string;
   pinnedPostId: string | null;
   memberCount: number;
@@ -47,6 +53,8 @@ export interface Comment {
   authorExpertType: string | null;
   authorAvatarUrl: string | null;
   body: string;
+  imageUrl: string | null;
+  videoUrl: string | null;
   score: number;
   createdAt: number;
 }

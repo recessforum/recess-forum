@@ -7,6 +7,7 @@ import { Check, Eye, MapPin, MessageSquare, Pin, Share2 } from "lucide-react";
 import type { Post, Role, Tier } from "@/lib/types";
 import { timeAgo } from "@/lib/ranking";
 import { sharePost } from "@/lib/share";
+import { placeLabel } from "@/lib/location";
 import { VoteControl } from "./VoteControl";
 import { TopicBadge } from "./TopicBadge";
 import { CircleBadge } from "./CircleBadge";
@@ -83,9 +84,9 @@ export function PostRow({
             <span>{post.author}</span>
           </Link>
           <AuthorBadges {...badgesFor(post)} />
-          {post.state && (
+          {placeLabel(post.state, post.country) && (
             <span className="flex items-center gap-0.5">
-              <MapPin size={11} /> {post.state}
+              <MapPin size={11} /> {placeLabel(post.state, post.country)}
             </span>
           )}
           <span>·</span>
