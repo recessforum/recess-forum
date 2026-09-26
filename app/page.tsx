@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Clock, Flame, Loader2, Plus, Search, Trophy } from "lucide-react";
 import { CATEGORIES, categoryOf, colorForCategory, topicById } from "@/lib/taxonomy";
 import { topicLabel } from "@/lib/taxonomy";
-import { hotScore, rangeCutoff } from "@/lib/ranking";
+import { featureMedia, hotScore, rangeCutoff } from "@/lib/ranking";
 import { decodePlace } from "@/lib/location";
 import { roleFor, tierFor } from "@/lib/roles";
 import type { Comment, Post } from "@/lib/types";
@@ -36,6 +36,8 @@ export default function HomePage() {
   const [query, setQuery] = useState("");
   const [selectedState, setSelectedState] = useState<string | null>(null);
 
+  // Fixed for this visit so voting doesn't reshuffle; a new visit rotates the featured media posts.
+  const [mediaSeed] = useState(() => Math.floor(Math.random() * 2 ** 31));
   const [postVoteDirs, setPostVoteDirs] = useState<Record<string, number>>({});
   const [showNewPost, setShowNewPost] = useState(false);
   const [showLoginRequired, setShowLoginRequired] = useState(false);
@@ -129,8 +131,11 @@ export default function HomePage() {
     } else {
       list = [...list].sort((a, b) => hotScore(b.score, b.views, b.createdAt) - hotScore(a.score, a.views, a.createdAt));
     }
+    // Hot/New: photo and video posts rotate through the top 3 and spread through the rest.
+    // Top and search results stay in pure ranked order.
+    if (sort !== "top" && !q) list = featureMedia(list, mediaSeed);
     return list;
-  }, [posts, selectedTopic, selectedCategory, selectedPlace, sort, topRange, query]);
+  }, [posts, selectedTopic, selectedCategory, selectedPlace, sort, topRange, query, mediaSeed]);
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 flex gap-10 w-full">
