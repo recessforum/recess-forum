@@ -19,7 +19,7 @@ import { RecessMark } from "@/components/RecessMark";
 import { useAuth } from "@/lib/auth-context";
 
 type Sort = "hot" | "new" | "top";
-const FRESH_MS = 48 * 60 * 60 * 1000; // "new" posts that lead the New feed
+const FRESH_MS = 24 * 60 * 60 * 1000; // "new" posts that lead the New feed
 type TopRange = "day" | "week" | "month" | "all";
 
 export default function HomePage() {
