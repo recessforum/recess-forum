@@ -19,6 +19,7 @@ import { RecessMark } from "@/components/RecessMark";
 import { useAuth } from "@/lib/auth-context";
 
 type Sort = "hot" | "new" | "top";
+const FRESH_MS = 48 * 60 * 60 * 1000; // "new" posts that lead the New feed
 type TopRange = "day" | "week" | "month" | "all";
 
 export default function HomePage() {
@@ -31,7 +32,7 @@ export default function HomePage() {
 
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [sort, setSort] = useState<Sort>("hot");
+  const [sort, setSort] = useState<Sort>("new");
   const [topRange, setTopRange] = useState<TopRange>("week");
   const [query, setQuery] = useState("");
   const [selectedState, setSelectedState] = useState<string | null>(null);
@@ -132,8 +133,13 @@ export default function HomePage() {
       list = [...list].sort((a, b) => hotScore(b.score, b.views, b.createdAt) - hotScore(a.score, a.views, a.createdAt));
     }
     // Hot/New: photo and video posts rotate through the top 3 and spread through the rest.
+    // On New, posts from the last FRESH_MS stay above them in date order so new posts lead.
     // Top and search results stay in pure ranked order.
-    if (sort !== "top" && !q) list = featureMedia(list, mediaSeed);
+    if (sort !== "top" && !q) {
+      const freshCutoff = sort === "new" ? Date.now() - FRESH_MS : Infinity;
+      const fresh = list.filter((p) => p.createdAt >= freshCutoff);
+      list = [...fresh, ...featureMedia(list.filter((p) => p.createdAt < freshCutoff), mediaSeed)];
+    }
     return list;
   }, [posts, selectedTopic, selectedCategory, selectedPlace, sort, topRange, query, mediaSeed]);
 
@@ -208,8 +214,8 @@ export default function HomePage() {
         <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
           <div className="flex items-center gap-4 text-[13px]">
             {([
-              { id: "hot", icon: Flame, label: "Hot" },
               { id: "new", icon: Clock, label: "New" },
+              { id: "hot", icon: Flame, label: "Hot" },
               { id: "top", icon: Trophy, label: "Top" },
             ] as const).map(({ id, icon: Icon, label }) => (
               <button key={id} onClick={() => setSort(id)}
