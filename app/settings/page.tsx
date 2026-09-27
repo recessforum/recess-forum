@@ -7,6 +7,7 @@ import { Loader2, Trash2, Upload } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/Avatar";
+import { EmailSettings } from "@/components/EmailSettings";
 import type { BlockedUser } from "@/lib/types";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -169,6 +170,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
+
+      <EmailSettings />
 
       <section>
         <h2 className="text-[13px] font-semibold text-[#5B584F] uppercase tracking-wide mb-3">Blocked users</h2>

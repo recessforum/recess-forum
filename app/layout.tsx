@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { AccountTypeGate } from "@/components/AccountTypeGate";
+import { InterestsGate } from "@/components/InterestsGate";
 import { AuthProvider, type AuthProfile } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/server";
 
@@ -64,6 +65,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
         <AuthProvider initialProfile={initialProfile}>
           <Header />
+          <InterestsGate />
           <AccountTypeGate />
           {children}
         </AuthProvider>

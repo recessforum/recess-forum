@@ -58,13 +58,45 @@ export default function PrivacyPage() {
           Verified Expert applications, and sending transactional emails (like
           confirming your email address when you sign up).
         </p>
+        <p>
+          We also use the topics you pick to decide which posts to tell you
+          about, but only if you choose to receive those emails (see below).
+        </p>
+      </Section>
+
+      <Section title="Email notifications">
+        <p>
+          <strong>Topic alerts (opt-in).</strong> When you sign up, or later in
+          Settings, you pick the topics you care about. If you also check the
+          box to get topic alerts, we email you when a new public post appears
+          in one of those topics, at most 5 emails a day. We never turn this on
+          for you, and we keep a record of when you agreed and the wording you
+          agreed to. Posts inside private circles are never sent by email.
+        </p>
+        <p>
+          <strong>Reply emails.</strong> We email you when someone replies to
+          your post or comment. You can turn these off in Settings.
+        </p>
+        <p>
+          <strong>Unsubscribing.</strong> Every topic alert has an unsubscribe
+          link that works with one click, without logging in, and takes effect
+          right away. You can also change your topics or turn any of these
+          emails off at any time in{" "}
+          <a href="/settings" className="text-[#26364A] font-medium hover:underline">Settings</a>.
+          Unsubscribing from notifications doesn&apos;t affect emails we must
+          send about your account, like password resets.
+        </p>
+        <p>
+          We don&apos;t send marketing emails, and we never share your email
+          address or your topics with advertisers.
+        </p>
       </Section>
 
       <Section title="Third parties that process data on our behalf">
         <p>
           We use a small number of service providers to run the forum, each of
           which only sees the data needed to do its job: Supabase (accounts,
-          database, file storage), Resend (delivering transactional emails),
+          database, file storage), Resend (delivering account and notification emails),
           OpenAI (an automated check for violent content on new posts and
           comments before they&apos;re published — it doesn&apos;t store what
           you write), and Google or Apple (only if you choose to sign in with
@@ -99,7 +131,8 @@ export default function PrivacyPage() {
 
       <Section title="Your choices">
         <p>
-          You can edit or delete your posts and comments at any time. You can
+          You can change your topics and turn email notifications on or off
+          at any time in Settings. You can edit or delete your posts and comments at any time. You can
           also permanently delete your account and all of your content
           yourself, at any time, from{" "}
           <a href="/settings" className="text-[#26364A] font-medium hover:underline">Settings</a>{" "}

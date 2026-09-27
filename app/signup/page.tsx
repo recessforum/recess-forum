@@ -8,6 +8,8 @@ import { startOAuth } from "@/lib/oauth";
 import { AppleLogo } from "@/components/AppleLogo";
 import { AccountTypeChoice } from "@/components/AccountTypeChoice";
 import { setPendingAccountType, type AccountType } from "@/lib/account-type";
+import { TopicPicker } from "@/components/TopicPicker";
+import { setPendingTopicPrefs, type TopicPrefs } from "@/lib/topic-alerts";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -18,16 +20,18 @@ export default function SignupPage() {
   const [done, setDone] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
+  const [topics, setTopics] = useState<TopicPrefs>({ categories: [], categoryEmails: false });
   const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(null);
 
   const inputClass = "w-full px-3 py-2.5 border border-[#E6E3DA] bg-[#FAF9F7] text-[14px] outline-none focus:border-[#26364A] transition-colors";
-  const ready = agreed && !!accountType;
+  const ready = agreed && !!accountType && topics.categories.length > 0;
   const canSubmit = email.trim() && password.length >= 6 && nickname.trim() && ready && !sending;
 
   const signInWithOAuth = async (provider: "google" | "apple") => {
     if (!ready) return;
     setError(null);
     setPendingAccountType(accountType!);
+    setPendingTopicPrefs(topics);
     setOauthLoading(provider);
     try {
       await startOAuth(provider, () => setOauthLoading(null));
@@ -41,12 +45,13 @@ export default function SignupPage() {
     setError(null);
     setSending(true);
     setPendingAccountType(accountType!);
+    setPendingTopicPrefs(topics);
     const supabase = createClient();
     const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
-        data: { display_name: nickname.trim(), account_type: accountType },
+        data: { display_name: nickname.trim(), account_type: accountType, topic_prefs: topics },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -76,6 +81,10 @@ export default function SignupPage() {
         <AccountTypeChoice value={accountType} onChange={setAccountType} />
       </div>
 
+      <div className="mb-5">
+        <TopicPicker value={topics} onChange={setTopics} />
+      </div>
+
       <label className="flex items-start gap-2 mb-4 cursor-pointer">
         <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)}
           className="mt-0.5 shrink-0" />
@@ -86,6 +95,11 @@ export default function SignupPage() {
           <Link href="/privacy" target="_blank" className="text-[#26364A] font-medium hover:underline">Privacy Policy</Link>.
         </span>
       </label>
+      {!ready && (
+        <p className="text-[12px] text-[#9A968A] -mt-2 mb-4">
+          To continue, choose who you are, pick at least one topic, and agree to the Terms.
+        </p>
+      )}
 
       <button onClick={() => signInWithOAuth("apple")} disabled={!ready || !!oauthLoading}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black text-white text-[14px] font-medium mb-3 disabled:opacity-40 hover:bg-[#1a1a1a] transition-colors">

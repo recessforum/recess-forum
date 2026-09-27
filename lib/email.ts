@@ -3,7 +3,9 @@
  * Auth uses for its own emails — this is for app-triggered notifications).
  * No `resend` package dependency; it's a single POST.
  */
-export async function sendEmail(input: { to: string; subject: string; html: string }): Promise<void> {
+export async function sendEmail(input: {
+  to: string; subject: string; html: string; text?: string; headers?: Record<string, string>;
+}): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.error("RESEND_API_KEY not set — skipping email send");
@@ -21,6 +23,8 @@ export async function sendEmail(input: { to: string; subject: string; html: stri
       to: input.to,
       subject: input.subject,
       html: input.html,
+      ...(input.text ? { text: input.text } : {}),
+      ...(input.headers ? { headers: input.headers } : {}),
     }),
   });
 

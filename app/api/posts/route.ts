@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { createPost, isCircleMember } from "@/lib/db";
 import { containsViolentContent } from "@/lib/moderation";
 import { isValidCountry, isValidState } from "@/lib/location";
 import { isOwnMediaUrl } from "@/lib/media";
 import { createClient } from "@/lib/supabase/server";
+import { notifyTopicSubscribers } from "@/lib/notifications";
+import { categoryOf } from "@/lib/taxonomy";
 import type { Promo } from "@/lib/types";
 
 interface NewPostBody {
@@ -67,6 +69,16 @@ export async function POST(req: NextRequest) {
     },
     user.id
   );
+
+  // Topic alerts go out after the response so posting stays fast. Circle
+  // posts are members-only, so they're never announced by email.
+  const category = categoryOf(data.topicId);
+  if (!circleId && category) {
+    after(() => notifyTopicSubscribers({
+      postId: post.id, authorId: user.id, title: post.title, body, categoryId: category.id,
+      categoryLabel: category.label, authorName: post.author,
+    }));
+  }
 
   return NextResponse.json({ post });
 }
