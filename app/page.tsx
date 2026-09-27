@@ -39,6 +39,7 @@ export default function HomePage() {
 
   // Fixed for this visit so voting doesn't reshuffle; a new visit rotates the featured media posts.
   const [mediaSeed] = useState(() => Math.floor(Math.random() * 2 ** 31));
+  const [visitStart] = useState(() => Date.now());
   const [postVoteDirs, setPostVoteDirs] = useState<Record<string, number>>({});
   const [showNewPost, setShowNewPost] = useState(false);
   const [showLoginRequired, setShowLoginRequired] = useState(false);
@@ -136,12 +137,12 @@ export default function HomePage() {
     // On New, posts from the last FRESH_MS stay above them in date order so new posts lead.
     // Top and search results stay in pure ranked order.
     if (sort !== "top" && !q) {
-      const freshCutoff = sort === "new" ? Date.now() - FRESH_MS : Infinity;
+      const freshCutoff = sort === "new" ? visitStart - FRESH_MS : Infinity;
       const fresh = list.filter((p) => p.createdAt >= freshCutoff);
       list = [...fresh, ...featureMedia(list.filter((p) => p.createdAt < freshCutoff), mediaSeed)];
     }
     return list;
-  }, [posts, selectedTopic, selectedCategory, selectedPlace, sort, topRange, query, mediaSeed]);
+  }, [posts, selectedTopic, selectedCategory, selectedPlace, sort, topRange, query, mediaSeed, visitStart]);
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 flex gap-10 w-full">
