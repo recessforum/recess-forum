@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, Loader2, MessageSquare } from "lucide-react";
+import { BadgeCheck, Check, ChevronLeft, ExternalLink, Link2, Loader2, MessageSquare } from "lucide-react";
+import { categoryOf } from "@/lib/taxonomy";
 import { useAuth } from "@/lib/auth-context";
 import { countsFor, karmaFor, roleFor, tierFor } from "@/lib/roles";
 import { timeAgo } from "@/lib/ranking";
@@ -26,6 +27,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [tab, setTab] = useState<"posts" | "replies">("posts");
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -37,6 +39,8 @@ export default function ProfilePage() {
       const profileData = await profileRes.json();
       const bootstrap = await bootstrapRes.json();
       setProfile(profileData.profile);
+      // An expert's answers are their portfolio, so open on replies.
+      if (profileData.profile.role === "verified_expert") setTab("replies");
       setAllPosts(bootstrap.posts);
       setAllComments(bootstrap.comments);
       setPostVoteDirs(bootstrap.voteDirs.posts);
@@ -90,6 +94,16 @@ export default function ProfilePage() {
     .filter((c) => c.authorId === profile.id)
     .sort((a, b) => b.createdAt - a.createdAt);
   const postById = new Map(allPosts.map((p) => [p.id, p]));
+  const isExpert = profile.role === "verified_expert";
+  const answeredTopics = isExpert
+    ? [...new Set(replies.map((c) => categoryOf(postById.get(c.postId)?.topicId ?? "")?.label).filter(Boolean) as string[])]
+    : [];
+  const answeredPosts = new Set(replies.map((c) => c.postId)).size;
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(`https://www.recessforum.com/u/${profile.id}`);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8 w-full">
@@ -125,6 +139,34 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {isExpert && (
+        <div className="mb-6 p-5 border border-[#BFE0DE] bg-[#F3FAF9]">
+          <div className="flex items-center gap-2 text-[13px] font-semibold text-[#217A78] mb-2">
+            <BadgeCheck size={16} /> Verified Expert{profile.expertType ? ` · ${profile.expertType}` : ""}
+          </div>
+          {profile.bio && <p className="text-[14px] text-[#1C1B19] leading-relaxed mb-3 whitespace-pre-line">{profile.bio}</p>}
+          <p className="text-[13px] text-[#5B584F] mb-3">
+            Has answered <span className="font-semibold text-[#1C1B19]">{answeredPosts}</span> {answeredPosts === 1 ? "parent question" : "parent questions"} on Recess Forum.
+          </p>
+          {answeredTopics.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {answeredTopics.map((t) => <span key={t} className="text-[12px] font-medium px-2 py-0.5 bg-white border border-[#DDEDEB] text-[#217A78]">{t}</span>)}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {profile.website && (
+              <a href={profile.website} target="_blank" rel="noopener noreferrer nofollow"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-semibold bg-[#26364A] text-white hover:bg-[#1e2c3d]">
+                <ExternalLink size={13} /> Visit website
+              </a>
+            )}
+            <button onClick={copyLink} className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-[#C9D9D7] bg-white text-[#1C1B19] hover:border-[#217A78]">
+              {linkCopied ? <Check size={13} /> : <Link2 size={13} />} {linkCopied ? "Link copied" : "Copy profile link"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {tab === "posts" ? (
         posts.length === 0 ? (

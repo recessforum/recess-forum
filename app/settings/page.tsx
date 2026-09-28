@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/Avatar";
 import { EmailSettings } from "@/components/EmailSettings";
+import { ExpertProfileSettings } from "@/components/ExpertProfileSettings";
 import type { BlockedUser } from "@/lib/types";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -170,6 +171,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
+
+      {(profile.role === "verified_expert" || profile.role === "admin") && <ExpertProfileSettings userId={profile.id} />}
 
       <EmailSettings />
 

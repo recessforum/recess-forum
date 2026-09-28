@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { CATEGORIES, colorForCategory } from "@/lib/taxonomy";
-import { ALERT_CONSENT_TEXT, type TopicPrefs } from "@/lib/topic-alerts";
+import { ALERT_CONSENT_TEXT, DIGEST_CONSENT_TEXT, type TopicPrefs } from "@/lib/topic-alerts";
 
 /** Pick one or more categories, plus the (unchecked by default) email opt-in. */
 export function TopicPicker({ value, onChange }: { value: TopicPrefs; onChange: (v: TopicPrefs) => void }) {
@@ -40,6 +40,11 @@ export function TopicPicker({ value, onChange }: { value: TopicPrefs; onChange: 
           {ALERT_CONSENT_TEXT} <span className="text-[#9A968A]">(Optional. Up to 5 emails a day. See our{" "}
           <Link href="/privacy" target="_blank" className="text-[#26364A] hover:underline">Privacy Policy</Link>.)</span>
         </span>
+      </label>
+      <label className="flex items-start gap-2 mt-2 cursor-pointer">
+        <input type="checkbox" checked={!!value.weeklyDigest}
+          onChange={(e) => onChange({ ...value, weeklyDigest: e.target.checked })} className="mt-0.5 shrink-0" />
+        <span className="text-[13px] text-[#5B584F] leading-snug">{DIGEST_CONSENT_TEXT} <span className="text-[#9A968A]">(Optional. Once a week.)</span></span>
       </label>
     </div>
   );

@@ -74,6 +74,12 @@ export default function PrivacyPage() {
           agreed to. Posts inside private circles are never sent by email.
         </p>
         <p>
+          <strong>Weekly digest (opt-in).</strong> If you check the separate
+          weekly digest box, we send one email a week with popular posts and
+          unanswered questions in your topics, plus upcoming Office Hours. It
+          has its own one-click unsubscribe link.
+        </p>
+        <p>
           <strong>Reply emails.</strong> We email you when someone replies to
           your post or comment. You can turn these off in Settings.
         </p>

@@ -467,7 +467,7 @@ export async function updateDisplayName(supabase: SupabaseClient, userId: string
 export async function getProfile(supabase: SupabaseClient, id: string): Promise<PublicProfile | undefined> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, avatar_url, role, expert_type, account_type, founding_number, created_at")
+    .select("id, display_name, avatar_url, role, expert_type, account_type, founding_number, created_at, bio, website")
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
@@ -481,6 +481,8 @@ export async function getProfile(supabase: SupabaseClient, id: string): Promise<
     accountType: data.account_type,
     foundingNumber: data.founding_number,
     createdAt: new Date(data.created_at).getTime(),
+    bio: data.bio ?? null,
+    website: data.website ?? null,
   };
 }
 

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "./supabase/admin";
 import { sendEmail } from "./email";
 import { DAILY_ALERT_CAP } from "./topic-alerts";
+import { categoryOf } from "./taxonomy";
 
 /**
  * Emails the post's author when a top-level comment is added, or the parent
@@ -206,4 +207,77 @@ export async function notifyTopicSubscribers(params: {
   } catch (err) {
     console.error("notifyTopicSubscribers failed", err);
   }
+}
+
+/**
+ * Weekly digest for members who opted in: the most active posts of the past
+ * week in their topics, questions still waiting for answers, and upcoming
+ * Office Hours. Members with nothing relevant that week get no email.
+ * Runs from the weekly cron; skips anyone already sent one in the last 6 days.
+ */
+export async function sendWeeklyDigests(): Promise<{ sent: number; skipped: number }> {
+  const admin = createAdminClient();
+  const today = new Date();
+  const weekAgo = new Date(+today - 7 * 864e5).toISOString();
+  const sixDaysAgo = new Date(+today - 6 * 864e5).toISOString().slice(0, 10);
+
+  const [{ data: subs }, { data: posts }, { data: events }] = await Promise.all([
+    admin.from("notification_prefs").select("user_id, categories, unsubscribe_token, digest_last_sent")
+      .eq("weekly_digest", true).or(`digest_last_sent.is.null,digest_last_sent.lte.${sixDaysAgo}`).limit(2000),
+    admin.from("posts").select("id, title, topic_id, score, author_id, comments(count)")
+      .is("circle_id", null).gte("created_at", weekAgo).limit(500),
+    admin.from("events").select("post_id, title, starts_at").gte("starts_at", today.toISOString())
+      .lte("starts_at", new Date(+today + 7 * 864e5).toISOString()).order("starts_at"),
+  ]);
+  if (!subs?.length) return { sent: 0, skipped: 0 };
+
+  const enriched = (posts ?? []).map((p) => ({
+    ...p, category: categoryOf(p.topic_id)?.id, replies: (p.comments as { count: number }[] | null)?.[0]?.count ?? 0,
+  }));
+  const row = (p: { id: string; title: string }, note: string) =>
+    `<li style="margin:0 0 10px"><a href="${SITE}/post/${p.id}" style="color:#26364A;font-weight:600;text-decoration:none">${escapeHtml(p.title)}</a><br><span style="font-size:12px;color:#9A968A">${note}</span></li>`;
+
+  let sent = 0, skipped = 0;
+  for (const sub of subs) {
+    const mine = enriched.filter((p) => p.category && sub.categories.includes(p.category) && p.author_id !== sub.user_id);
+    const popular = mine.filter((p) => p.replies > 0).sort((a, b) => b.score + 2 * b.replies - (a.score + 2 * a.replies)).slice(0, 5);
+    const waiting = mine.filter((p) => p.replies === 0).slice(0, 3);
+    if (!popular.length && !waiting.length && !events?.length) { skipped++; continue; }
+
+    const { data: userData } = await admin.auth.admin.getUserById(sub.user_id);
+    const email = userData?.user?.email;
+    if (!email) { skipped++; continue; }
+
+    const unsub = `${SITE}/unsubscribe?t=${sub.unsubscribe_token}&k=digest`;
+    const section = (title: string, items: string) => items ? `<h2 style="font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#9C3B4A;margin:24px 0 10px">${title}</h2><ul style="padding-left:18px;margin:0">${items}</ul>` : "";
+    const html = `
+      <div style="font-family:-apple-system,system-ui,sans-serif;max-width:560px;color:#1C1B19">
+        <h1 style="font-size:20px;margin:0 0 4px">This week on Recess Forum</h1>
+        <p style="font-size:14px;color:#5B584F;margin:0">The conversations in your topics from the past 7 days.</p>
+        ${section("Most helpful this week", popular.map((p) => row(p, `${p.replies} ${p.replies === 1 ? "reply" : "replies"}`)).join(""))}
+        ${section("Can you help? Still waiting for answers", waiting.map((p) => row(p, "No replies yet")).join(""))}
+        ${section("Office Hours this week", (events ?? []).map((e) => row({ id: e.post_id, title: e.title }, new Date(e.starts_at).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" }))).join(""))}
+        <p style="margin:26px 0 0"><a href="${SITE}" style="display:inline-block;background:#26364A;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 18px">Open Recess Forum</a></p>
+        <hr style="border:none;border-top:1px solid #E6E3DA;margin:28px 0 14px">
+        <p style="font-size:12px;color:#9A968A;line-height:1.6">You're getting this because you turned on the weekly digest.<br>
+          <a href="${unsub}" style="color:#5B584F">Unsubscribe from the digest</a> · <a href="${SITE}/settings" style="color:#5B584F">Change your topics</a>${MAILING_ADDRESS ? `<br>Recess Forum · ${escapeHtml(MAILING_ADDRESS)}` : ""}</p>
+      </div>`;
+    const text = [
+      "This week on Recess Forum",
+      ...popular.map((p) => `- ${p.title} (${SITE}/post/${p.id})`),
+      ...(waiting.length ? ["", "Still waiting for answers:", ...waiting.map((p) => `- ${p.title} (${SITE}/post/${p.id})`)] : []),
+      "", `Unsubscribe from the digest: ${unsub}`,
+    ].join("\n");
+
+    await sendEmail({
+      to: email, subject: "This week on Recess Forum", html, text,
+      headers: {
+        "List-Unsubscribe": `<${SITE}/api/unsubscribe?t=${sub.unsubscribe_token}&k=digest>, <mailto:recessforum@gmail.com?subject=unsubscribe>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+    });
+    await admin.from("notification_prefs").update({ digest_last_sent: today.toISOString().slice(0, 10) }).eq("user_id", sub.user_id);
+    sent++;
+  }
+  return { sent, skipped };
 }

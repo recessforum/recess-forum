@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 
 const SITE_URL = "https://www.recessforum.com";
 
-const STATIC_ROUTES = ["", "/circles", "/privacy", "/terms", "/support", "/child-safety"];
+const STATIC_ROUTES = ["", "/circles", "/tools", "/tools/iep-letter", "/tools/early-decision", "/experts", "/events", "/privacy", "/terms", "/support", "/child-safety"];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((path) => ({

@@ -9,11 +9,11 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "log in first" }, { status: 401 });
 
   const [{ data: prefs }, { data: profile }] = await Promise.all([
-    supabase.from("notification_prefs").select("categories, category_emails").eq("user_id", user.id).maybeSingle(),
+    supabase.from("notification_prefs").select("categories, category_emails, weekly_digest").eq("user_id", user.id).maybeSingle(),
     supabase.from("profiles").select("email_notifications_enabled").eq("id", user.id).maybeSingle(),
   ]);
   return NextResponse.json({
-    prefs: prefs ? { categories: prefs.categories, categoryEmails: prefs.category_emails } : null,
+    prefs: prefs ? { categories: prefs.categories, categoryEmails: prefs.category_emails, weeklyDigest: prefs.weekly_digest } : null,
     replyEmails: profile?.email_notifications_enabled !== false,
   });
 }
@@ -30,14 +30,16 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Pick at least one topic." }, { status: 400 });
   }
   const categoryEmails = body.categoryEmails === true;
+  const weeklyDigest = body.weeklyDigest === true;
 
   const { data: existing } = await supabase
-    .from("notification_prefs").select("category_emails").eq("user_id", user.id).maybeSingle();
+    .from("notification_prefs").select("category_emails, weekly_digest").eq("user_id", user.id).maybeSingle();
 
   const row: Record<string, unknown> = {
     user_id: user.id,
     categories: body.categories,
     category_emails: categoryEmails,
+    weekly_digest: weeklyDigest,
     updated_at: new Date().toISOString(),
   };
   // Record consent each time the member switches alerts on (not on every save).
@@ -45,6 +47,9 @@ export async function PUT(req: NextRequest) {
     row.consented_at = new Date().toISOString();
     row.consent_text = ALERT_CONSENT_TEXT;
   }
+
+  // The digest's wording is the fixed DIGEST_CONSENT_TEXT; its own timestamp records when it was agreed to.
+  if (weeklyDigest && !existing?.weekly_digest) row.digest_consented_at = new Date().toISOString();
 
   const { error } = await supabase.from("notification_prefs").upsert(row, { onConflict: "user_id" });
   if (error) return NextResponse.json({ error: "Couldn't save your topics. Please try again." }, { status: 500 });

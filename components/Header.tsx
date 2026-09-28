@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, LogOut, Plus, Shield, Users } from "lucide-react";
+import { BadgeCheck, LogOut, Plus, Shield, Users, Wrench } from "lucide-react";
 import { RecessMark } from "./RecessMark";
 import { NewPostModal } from "./NewPostModal";
 import { ExpertApplicationModal } from "./ExpertApplicationModal";
@@ -57,6 +57,10 @@ export function Header() {
             onClick={(e) => { if (!profile) { e.preventDefault(); setShowLoginRequired(true); } }}
             className="flex items-center gap-1.5 px-2 sm:px-3 py-2 text-[13px] font-medium text-[#5B584F] hover:text-[#26364A] transition-colors">
             <Users size={15} /> <span className="hidden sm:inline">Circles</span>
+          </Link>
+          <Link href="/tools"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-2 text-[13px] font-medium text-[#5B584F] hover:text-[#26364A] transition-colors">
+            <Wrench size={15} /> <span className="hidden sm:inline">Tools</span>
           </Link>
           <button onClick={() => { if (!profile) { setShowLoginRequired(true); } else { setShowNewPost(true); } }}
             className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 bg-[#26364A] text-white text-[13px] font-medium hover:bg-[#1e2c3d] transition-colors">

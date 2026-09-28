@@ -9,6 +9,7 @@ import { topicLabel } from "@/lib/taxonomy";
 import type { AdminBlockRecord, AdminMember, AdminStats, ExpertApplication, Report } from "@/lib/types";
 import type { CardNewsContent } from "@/lib/cardNews";
 import { MemberEmailExport } from "@/components/admin/MemberEmailExport";
+import { CreateEventForm } from "@/components/admin/CreateEventForm";
 
 type Application = ExpertApplication & { applicantName: string };
 
@@ -245,6 +246,7 @@ export default function AdminPage() {
           </div>
 
           <MemberEmailExport />
+          <CreateEventForm />
 
           <div className="grid sm:grid-cols-2 gap-8 mb-10">
             <div>

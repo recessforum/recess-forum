@@ -90,6 +90,9 @@ export interface PublicProfile {
   accountType: "parent" | "provider" | "expert" | null;
   foundingNumber: number | null;
   createdAt: number;
+  /** Verified Experts only: short bio and practice website. */
+  bio: string | null;
+  website: string | null;
 }
 
 export interface BlockedUser {

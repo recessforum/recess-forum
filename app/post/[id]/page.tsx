@@ -12,6 +12,8 @@ import { TopicBadge } from "@/components/TopicBadge";
 import { CircleBadge } from "@/components/CircleBadge";
 import { NeedsAnswersBadge } from "@/components/NeedsAnswersBadge";
 import { ExpertAnsweredBadge, hasExpertAnswer } from "@/components/ExpertAnsweredBadge";
+import { EventBanner } from "@/components/EventBanner";
+import type { OfficeHoursEvent } from "@/lib/events";
 import { TopicSelect } from "@/components/TopicSelect";
 import { LoginRequiredModal } from "@/components/LoginRequiredModal";
 import { VoteControl } from "@/components/VoteControl";
@@ -31,6 +33,11 @@ export default function PostDetailPage() {
 
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [event, setEvent] = useState<OfficeHoursEvent | null>(null);
+  useEffect(() => {
+    fetch("/api/events").then((r) => r.json())
+      .then((d) => setEvent((d.events as OfficeHoursEvent[] | undefined)?.find((e) => e.postId === id) ?? null)).catch(() => {});
+  }, [id]);
   const [postVoteDirs, setPostVoteDirs] = useState<Record<string, number>>({});
   const [commentVoteDirs, setCommentVoteDirs] = useState<Record<string, number>>({});
   const [allPosts, setAllPosts] = useState<Post[]>([]);
@@ -250,6 +257,7 @@ export default function PostDetailPage() {
           {circle && isMember && <span className="shrink-0 text-[12px] font-medium text-[#217A78] flex items-center gap-1"><Check size={13} /> You&apos;re a member</span>}
         </div>
       )}
+      {event && <div className="mb-4"><EventBanner event={event} onThread /></div>}
       <div className="flex items-center gap-1.5 mb-2 flex-wrap">
         <TopicBadge topicId={post.topicId} onClick={() => router.push("/")} />
         {post.circleId && post.circleName && <CircleBadge circleId={post.circleId} circleName={post.circleName} />}

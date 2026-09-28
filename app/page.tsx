@@ -18,6 +18,8 @@ import { NewPostModal } from "@/components/NewPostModal";
 import { LoginRequiredModal } from "@/components/LoginRequiredModal";
 import { RecessMark } from "@/components/RecessMark";
 import { useAuth } from "@/lib/auth-context";
+import { EventBanner } from "@/components/EventBanner";
+import { eventStatus, type OfficeHoursEvent } from "@/lib/events";
 
 type Sort = "hot" | "new" | "top";
 const FRESH_MS = 24 * 60 * 60 * 1000; // "new" posts that lead the New feed
@@ -41,6 +43,11 @@ export default function HomePage() {
   // Fixed for this visit so voting doesn't reshuffle; a new visit rotates the featured media posts.
   const [mediaSeed] = useState(() => Math.floor(Math.random() * 2 ** 31));
   const [visitStart] = useState(() => Date.now());
+  const [events, setEvents] = useState<OfficeHoursEvent[]>([]);
+  useEffect(() => { fetch("/api/events").then((r) => r.json()).then((d) => setEvents(d.events ?? [])).catch(() => {}); }, []);
+  // Show the live session, or the next one within a week.
+  const featuredEvent = events.find((e) => eventStatus(e, visitStart) === "live")
+    ?? events.find((e) => eventStatus(e, visitStart) === "upcoming" && e.startsAt - visitStart < 7 * 864e5);
   const [postVoteDirs, setPostVoteDirs] = useState<Record<string, number>>({});
   const [showNewPost, setShowNewPost] = useState(false);
   const [showLoginRequired, setShowLoginRequired] = useState(false);
@@ -239,6 +246,8 @@ export default function HomePage() {
         </div>
 
         {error && <p className="text-[13px] text-[#26364A] mt-3">{error}</p>}
+
+        {featuredEvent && <div className="mt-3"><EventBanner event={featuredEvent} /></div>}
 
         {loading ? (
           <div className="flex items-center gap-2 text-[#9A968A] text-[14px] py-12 justify-center">

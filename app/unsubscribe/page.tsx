@@ -14,7 +14,10 @@ export default function UnsubscribePage() {
 }
 
 function Unsubscribe() {
-  const token = useSearchParams().get("t") ?? "";
+  const params = useSearchParams();
+  const token = params.get("t") ?? "";
+  const digest = params.get("k") === "digest";
+  const what = digest ? "the weekly digest" : "topic alerts";
   const [state, setState] = useState<"idle" | "working" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +27,7 @@ function Unsubscribe() {
     const res = await fetch("/api/unsubscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ t: token }),
+      body: JSON.stringify({ t: token, k: digest ? "digest" : undefined }),
     });
     if (res.ok) { setState("done"); return; }
     setError((await res.json().catch(() => ({}))).error || "Something went wrong. Please try again.");
@@ -37,7 +40,7 @@ function Unsubscribe() {
         <CheckCircle2 size={32} className="text-[#217A78] mx-auto mb-3" />
         <h1 className="text-[18px] font-semibold text-[#1C1B19] mb-2">You&apos;re unsubscribed</h1>
         <p className="text-[14px] text-[#5B584F] leading-relaxed">
-          You won&apos;t get topic alert emails anymore. You can turn them back on anytime in{" "}
+          You won&apos;t get {what} anymore. You can turn it back on anytime in{" "}
           <Link href="/settings" className="text-[#26364A] font-medium hover:underline">Settings</Link>.
         </p>
       </div>
@@ -46,9 +49,9 @@ function Unsubscribe() {
 
   return (
     <div className="max-w-sm mx-auto px-6 py-20 text-center">
-      <h1 className="text-[20px] font-semibold text-[#1C1B19] mb-2">Unsubscribe from topic alerts?</h1>
+      <h1 className="text-[20px] font-semibold text-[#1C1B19] mb-2">Unsubscribe from {what}?</h1>
       <p className="text-[14px] text-[#5B584F] leading-relaxed mb-6">
-        You&apos;ll stop getting emails about new posts in the topics you picked. Your account stays as it is.
+        {digest ? "You'll stop getting the weekly digest email." : "You'll stop getting emails about new posts in the topics you picked."} Your account stays as it is.
       </p>
       {error && <p className="text-[13px] text-[#B23B3B] mb-3">{error}</p>}
       <button onClick={unsubscribe} disabled={!token || state === "working"}

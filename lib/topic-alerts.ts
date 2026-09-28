@@ -5,12 +5,17 @@ import { CATEGORIES } from "./taxonomy";
 export const ALERT_CONSENT_TEXT =
   "Email me when there's a new post in the topics I picked. I can unsubscribe anytime from any email or in Settings.";
 
+export const DIGEST_CONSENT_TEXT =
+  "Send me a weekly digest of the best posts in my topics. I can unsubscribe anytime.";
+
 /** Most alert emails one member gets per day, however many posts go up. */
 export const DAILY_ALERT_CAP = 5;
 
 export interface TopicPrefs {
   categories: string[];
   categoryEmails: boolean;
+  /** Weekly digest opt-in (separate from per-post alerts). */
+  weeklyDigest?: boolean;
 }
 
 const CATEGORY_IDS = new Set(CATEGORIES.map((c) => c.id));
@@ -38,8 +43,8 @@ export function takePendingTopicPrefs(): TopicPrefs | null {
 
 export function parsePrefs(v: unknown): TopicPrefs | null {
   if (!v || typeof v !== "object") return null;
-  const { categories, categoryEmails } = v as Record<string, unknown>;
-  return isValidCategoryList(categories) ? { categories, categoryEmails: categoryEmails === true } : null;
+  const { categories, categoryEmails, weeklyDigest } = v as Record<string, unknown>;
+  return isValidCategoryList(categories) ? { categories, categoryEmails: categoryEmails === true, weeklyDigest: weeklyDigest === true } : null;
 }
 
 export async function saveTopicPrefs(prefs: TopicPrefs, extra?: { replyEmails?: boolean }): Promise<void> {
