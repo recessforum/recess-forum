@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { roleFor, tierFor } from "@/lib/roles";
 import type { Circle, Comment, Post, Promo } from "@/lib/types";
 import { PostRow } from "@/components/PostRow";
+import { hasExpertAnswer } from "@/components/ExpertAnsweredBadge";
 import { NewPostModal } from "@/components/NewPostModal";
 import { MediaView } from "@/components/MediaPicker";
 import { CircleAvatar, CircleAvatarEditor } from "@/components/CircleAvatar";
@@ -178,7 +179,7 @@ export default function CircleDetailPage() {
       ) : (
         sortedPosts.map((p) => (
           <div key={p.id} className="relative">
-            <PostRow post={p} commentCount={(allComments[p.id] || []).length} pinned={p.id === circle.pinnedPostId}
+            <PostRow post={p} commentCount={(allComments[p.id] || []).length} expertAnswered={hasExpertAnswer(allComments[p.id])} pinned={p.id === circle.pinnedPostId}
               onVote={handleVotePost} dir={postVoteDirs[p.id] || 0} onTopic={() => router.push("/")} badgesFor={badgesFor} />
             {isCreator && p.authorId === profile.id && (
               <button onClick={() => togglePin(p.id)}

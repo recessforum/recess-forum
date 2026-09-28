@@ -13,6 +13,7 @@ import type { Comment, Post } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileTopicDrawer } from "@/components/MobileTopicDrawer";
 import { PostRow } from "@/components/PostRow";
+import { hasExpertAnswer } from "@/components/ExpertAnsweredBadge";
 import { NewPostModal } from "@/components/NewPostModal";
 import { LoginRequiredModal } from "@/components/LoginRequiredModal";
 import { RecessMark } from "@/components/RecessMark";
@@ -251,7 +252,7 @@ export default function HomePage() {
         ) : (
           <div>
             {filteredPosts.map((p) => (
-              <PostRow key={p.id} post={p} commentCount={(comments[p.id] || []).length}
+              <PostRow key={p.id} post={p} commentCount={(comments[p.id] || []).length} expertAnswered={hasExpertAnswer(comments[p.id])}
                 onVote={handleVotePost} dir={postVoteDirs[p.id] || 0} onTopic={goTopic} badgesFor={badgesFor} />
             ))}
           </div>

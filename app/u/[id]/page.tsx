@@ -12,6 +12,7 @@ import { Avatar } from "@/components/Avatar";
 import { AuthorBadges } from "@/components/Badges";
 import { AuthorMenu } from "@/components/AuthorMenu";
 import { PostRow } from "@/components/PostRow";
+import { hasExpertAnswer } from "@/components/ExpertAnsweredBadge";
 
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -130,7 +131,7 @@ export default function ProfilePage() {
           <p className="text-[14px] text-[#9A968A] italic">No posts yet.</p>
         ) : (
           posts.map((p) => (
-            <PostRow key={p.id} post={p} commentCount={(allComments[p.id] || []).length}
+            <PostRow key={p.id} post={p} commentCount={(allComments[p.id] || []).length} expertAnswered={hasExpertAnswer(allComments[p.id])}
               onVote={handleVotePost} dir={postVoteDirs[p.id] || 0} onTopic={() => router.push("/")} badgesFor={badgesFor} />
           ))
         )

@@ -11,6 +11,7 @@ import { karmaFor, roleFor, tierFor } from "@/lib/roles";
 import { TopicBadge } from "@/components/TopicBadge";
 import { CircleBadge } from "@/components/CircleBadge";
 import { NeedsAnswersBadge } from "@/components/NeedsAnswersBadge";
+import { ExpertAnsweredBadge, hasExpertAnswer } from "@/components/ExpertAnsweredBadge";
 import { TopicSelect } from "@/components/TopicSelect";
 import { LoginRequiredModal } from "@/components/LoginRequiredModal";
 import { VoteControl } from "@/components/VoteControl";
@@ -249,10 +250,11 @@ export default function PostDetailPage() {
           {circle && isMember && <span className="shrink-0 text-[12px] font-medium text-[#217A78] flex items-center gap-1"><Check size={13} /> You&apos;re a member</span>}
         </div>
       )}
-      <div className="flex items-center gap-1.5 mb-2">
+      <div className="flex items-center gap-1.5 mb-2 flex-wrap">
         <TopicBadge topicId={post.topicId} onClick={() => router.push("/")} />
         {post.circleId && post.circleName && <CircleBadge circleId={post.circleId} circleName={post.circleName} />}
         {comments.length === 0 && <NeedsAnswersBadge />}
+        {hasExpertAnswer(comments) && <ExpertAnsweredBadge />}
       </div>
       {editing ? (
         <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}

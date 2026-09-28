@@ -12,6 +12,7 @@ import { VoteControl } from "./VoteControl";
 import { TopicBadge } from "./TopicBadge";
 import { CircleBadge } from "./CircleBadge";
 import { NeedsAnswersBadge } from "./NeedsAnswersBadge";
+import { ExpertAnsweredBadge } from "./ExpertAnsweredBadge";
 import { AuthorBadges } from "./Badges";
 import { Avatar } from "./Avatar";
 import { Briefcase } from "lucide-react";
@@ -26,6 +27,7 @@ export function PostRow({
   onTopic,
   badgesFor,
   pinned = false,
+  expertAnswered = false,
 }: {
   post: Post;
   commentCount: number;
@@ -34,6 +36,8 @@ export function PostRow({
   onTopic: (topicId: string) => void;
   badgesFor: (post: Post) => { tier: TierWithIcon; role: Role | null };
   pinned?: boolean;
+  /** A Verified Expert has replied (shows the "Answered by a Verified Expert" badge). */
+  expertAnswered?: boolean;
 }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
@@ -59,6 +63,7 @@ export function PostRow({
           <TopicBadge topicId={post.topicId} onClick={(e) => { e.stopPropagation(); onTopic(post.topicId); }} />
           {post.circleId && post.circleName && <CircleBadge circleId={post.circleId} circleName={post.circleName} />}
           {commentCount === 0 && <NeedsAnswersBadge />}
+          {expertAnswered && <ExpertAnsweredBadge />}
         </div>
         <h3 className="text-[18px] font-semibold leading-snug text-[#1C1B19] mb-1 group-hover:text-[#26364A] transition-colors">
           {post.title}
