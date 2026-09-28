@@ -51,6 +51,18 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
+      <Section title="Free tools and saved documents">
+        <p>
+          Our free tools (letters, transcripts, checklists, calculators) run in
+          your browser. What you type is not stored unless you choose
+          &quot;Save to my documents.&quot; Saved documents are private to your
+          account. If you turn on sharing for a document, anyone with that
+          private link can view it until you turn sharing off. You can edit or
+          delete your documents at any time, and they are deleted with your
+          account.
+        </p>
+      </Section>
+
       <Section title="How we use information">
         <p>
           We use your information to operate the forum: creating your account,

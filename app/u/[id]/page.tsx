@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { BadgeCheck, Check, ChevronLeft, ExternalLink, Link2, Loader2, MessageSquare } from "lucide-react";
+import { BadgeCheck, Check, ChevronLeft, ExternalLink, FolderOpen, Link2, Loader2, MessageSquare } from "lucide-react";
 import { categoryOf } from "@/lib/taxonomy";
 import { useAuth } from "@/lib/auth-context";
 import { countsFor, karmaFor, roleFor, tierFor } from "@/lib/roles";
@@ -111,8 +111,14 @@ export default function ProfilePage() {
         <button onClick={() => router.back()} className="flex items-center gap-1 text-[13px] font-medium text-[#5B584F] hover:text-[#1C1B19]">
           <ChevronLeft size={15} /> Back
         </button>
-        <AuthorMenu targetType="user" targetId={profile.id} authorId={profile.id} authorName={profile.displayName}
-          onBlocked={() => router.push("/")} />
+        {viewer?.id === profile.id ? (
+          <Link href="/documents" className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-semibold border border-[#E6E3DA] bg-white text-[#1C1B19] hover:border-[#26364A]">
+            <FolderOpen size={14} /> My documents
+          </Link>
+        ) : (
+          <AuthorMenu targetType="user" targetId={profile.id} authorId={profile.id} authorName={profile.displayName}
+            onBlocked={() => router.push("/")} />
+        )}
       </div>
 
       <div className="flex items-center gap-4 pb-6 mb-6 border-b border-[#E6E3DA]">
