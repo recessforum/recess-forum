@@ -7,6 +7,7 @@ import { Check, FolderOpen, Loader2, Printer, Save, ShieldCheck } from "lucide-r
 import { useAuth } from "@/lib/auth-context";
 import { TOOL_BY_SLUG } from "@/lib/tools";
 import { TOOL_DEFS } from "./index";
+import { printDocument } from "@/lib/print";
 
 /** Form on the left, live printable document on the right, save/print on top. */
 export function ToolPage({ slug }: { slug: string }) {
@@ -74,7 +75,7 @@ export function ToolPage({ slug }: { slug: string }) {
                 <Save size={14} /> Log in to save
               </Link>
             )}
-            <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-[#E6E3DA] bg-white hover:bg-[#FAF9F7]">
+            <button onClick={() => printDocument(slug, data)} className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-[#E6E3DA] bg-white hover:bg-[#FAF9F7]">
               <Printer size={14} /> Print
             </button>
             {profile && (

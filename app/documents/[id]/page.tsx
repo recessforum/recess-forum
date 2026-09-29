@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Check, Copy, Loader2, Pencil, Printer, Trash2 } from "lucide-react";
 import { TOOL_BY_SLUG } from "@/lib/tools";
 import { TOOL_DEFS } from "@/components/tools";
+import { printDocument } from "@/lib/print";
 
 interface Doc { id: string; tool: string; title: string; data: unknown; shareToken: string | null }
 
@@ -48,7 +49,7 @@ export default function DocumentPage() {
         <h1 className="text-[22px] font-semibold text-[#1C1B19] mt-2">{doc.title}</h1>
         <p className="text-[12px] text-[#9A968A] mb-4">{TOOL_BY_SLUG[doc.tool]?.title}</p>
         <div className="flex flex-wrap gap-2 mb-3">
-          <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-semibold bg-[#26364A] text-white"><Printer size={14} /> Print</button>
+          <button onClick={() => printDocument(doc.tool, doc.data)} className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-semibold bg-[#26364A] text-white"><Printer size={14} /> Print</button>
           <Link href={`/tools/${doc.tool}?doc=${doc.id}`} className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-[#E6E3DA] bg-white"><Pencil size={14} /> Edit</Link>
           <button onClick={remove} className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-[#E6C9C9] text-[#B23B3B] bg-white"><Trash2 size={14} /> Delete</button>
         </div>
