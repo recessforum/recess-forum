@@ -19,6 +19,7 @@ import { LoginRequiredModal } from "@/components/LoginRequiredModal";
 import { RecessMark } from "@/components/RecessMark";
 import { useAuth } from "@/lib/auth-context";
 import { EventBanner } from "@/components/EventBanner";
+import { AppStoreBadge } from "@/components/AppStoreBadge";
 import { eventStatus, type OfficeHoursEvent } from "@/lib/events";
 
 type Sort = "hot" | "new" | "top";
@@ -180,6 +181,9 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+        )}
+        {!activeTopic && !selectedCategory && (
+          <div className="-mt-3 mb-6"><AppStoreBadge height={38} /></div>
         )}
 
         {activeTopic && (

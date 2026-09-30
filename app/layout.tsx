@@ -31,6 +31,8 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
   },
+  // iOS Safari Smart App Banner ("Open in the App Store" bar at the top).
+  itunes: { appId: "6812074278" },
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
