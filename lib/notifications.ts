@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "./supabase/admin";
 import { sendEmail } from "./email";
-import { DAILY_ALERT_CAP } from "./topic-alerts";
+import { DAILY_ALERT_CAP, EXPERT_DAILY_ALERT_CAP } from "./topic-alerts";
 import { categoryOf } from "./taxonomy";
 
 /**
@@ -163,6 +163,11 @@ export async function notifyTopicSubscribers(params: {
       .limit(1000);
     if (!subs?.length) return;
 
+    // Verified Experts get a higher daily cap: answering questions is why they're here.
+    const { data: experts } = await admin.from("profiles").select("id")
+      .eq("role", "verified_expert").in("id", subs.map((s) => s.user_id));
+    const expertIds = new Set((experts ?? []).map((e) => e.id));
+
     const today = new Date().toISOString().slice(0, 10);
     const postUrl = `${SITE}/post/${params.postId}`;
     const title = escapeHtml(params.title);
@@ -172,7 +177,7 @@ export async function notifyTopicSubscribers(params: {
 
     for (const sub of subs) {
       const sentToday = sub.sent_day === today ? sub.sent_today : 0;
-      if (sentToday >= DAILY_ALERT_CAP) continue;
+      if (sentToday >= (expertIds.has(sub.user_id) ? EXPERT_DAILY_ALERT_CAP : DAILY_ALERT_CAP)) continue;
 
       const { data: userData } = await admin.auth.admin.getUserById(sub.user_id);
       const email = userData?.user?.email;
@@ -277,6 +282,161 @@ export async function sendWeeklyDigests(): Promise<{ sent: number; skipped: numb
       },
     });
     await admin.from("notification_prefs").update({ digest_last_sent: today.toISOString().slice(0, 10) }).eq("user_id", sub.user_id);
+    sent++;
+  }
+  return { sent, skipped };
+}
+
+/**
+ * Welcome email when an application is approved: what the badge means and a
+ * button to pick topics and turn on alerts (nothing is switched on for them).
+ */
+export async function notifyExpertApproved(userId: string): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const [{ data: userData }, { data: profile }] = await Promise.all([
+      admin.auth.admin.getUserById(userId),
+      admin.from("profiles").select("display_name, expert_type").eq("id", userId).maybeSingle(),
+    ]);
+    const email = userData?.user?.email;
+    if (!email || !profile) return;
+    const name = profile.display_name, expertType = profile.expert_type as string | null;
+    const settingsUrl = `${SITE}/settings#expert-alerts`;
+    const type = expertType ? ` (${escapeHtml(expertType)})` : "";
+    await sendEmail({
+      to: email,
+      subject: "You're a Verified Expert on Recess Forum",
+      html: `
+        <div style="font-family:-apple-system,system-ui,sans-serif;max-width:560px;color:#1C1B19">
+          <h1 style="font-size:20px;line-height:1.3;margin:0 0 10px">Welcome, ${escapeHtml(name)}! You're now a Verified Expert${type}.</h1>
+          <p style="font-size:14px;line-height:1.6;color:#3A382F">Thank you for helping parents. Here's how to find the questions you can answer:</p>
+          <ol style="font-size:14px;line-height:1.6;color:#3A382F;padding-left:20px">
+            <li><strong>Pick your topics and turn on alerts.</strong> We'll email you new questions in those topics, or one daily summary of questions still waiting for an expert. Your choice.</li>
+            <li><strong>Parents can ask you directly.</strong> When a parent taps "Ask a Verified Expert" on their post and picks you, we'll email you a link.</li>
+            <li><strong>Your answers stand out.</strong> Replies show your Verified Expert badge, and the post is marked "Answered by a Verified Expert."</li>
+          </ol>
+          <p style="margin:20px 0"><a href="${settingsUrl}" style="display:inline-block;background:#26364A;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 18px">Choose topics and alerts</a></p>
+          <p style="font-size:13px;color:#5B584F;line-height:1.6">You can also add a short bio and your practice website in Settings so parents can learn about you on your profile.</p>
+        </div>`,
+      text: `Welcome, ${name}! You're now a Verified Expert on Recess Forum.\n\n1. Pick your topics and turn on alerts: ${settingsUrl}\n2. Parents can ask you directly from their post; we'll email you a link.\n3. Your replies show your Verified Expert badge.\n`,
+    });
+  } catch (err) {
+    console.error("notifyExpertApproved failed", err);
+  }
+}
+
+/** A parent asked this expert to answer their post. Honors the expert's reply-email setting. Never throws. */
+export async function notifyExpertRequest(params: { expertId: string; postId: string; requesterName: string }): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const [{ data: expert }, { data: post }] = await Promise.all([
+      admin.from("profiles").select("email_notifications_enabled, role").eq("id", params.expertId).maybeSingle(),
+      admin.from("posts").select("title, body").eq("id", params.postId).maybeSingle(),
+    ]);
+    if (!post || expert?.role !== "verified_expert" || expert.email_notifications_enabled === false) return;
+    const { data: userData } = await admin.auth.admin.getUserById(params.expertId);
+    const email = userData?.user?.email;
+    if (!email) return;
+
+    const postUrl = `${SITE}/post/${params.postId}`;
+    const snippetRaw = (post.body ?? "").replace(/\s+/g, " ").trim();
+    const snippet = snippetRaw.length > 300 ? `${snippetRaw.slice(0, 300)}…` : snippetRaw;
+    await sendEmail({
+      to: email,
+      subject: `A parent asked for your answer: ${post.title}`.slice(0, 150),
+      html: `
+        <div style="font-family:-apple-system,system-ui,sans-serif;max-width:560px;color:#1C1B19">
+          <p style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#217A78;margin:0 0 8px">Asked you directly</p>
+          <h1 style="font-size:20px;line-height:1.3;margin:0 0 10px">${escapeHtml(post.title)}</h1>
+          ${snippet ? `<p style="font-size:14px;line-height:1.55;color:#5B584F;margin:0 0 6px">${escapeHtml(snippet)}</p>` : ""}
+          <p style="font-size:12px;color:#9A968A;margin:0 0 18px">${escapeHtml(params.requesterName)} would love a Verified Expert's take.</p>
+          <a href="${postUrl}" style="display:inline-block;background:#26364A;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 18px">Read and reply</a>
+          <p style="font-size:12px;color:#9A968A;margin-top:24px">You're getting this because you're a Verified Expert on Recess Forum. Don't want these? <a href="${SITE}/settings" style="color:#5B584F">Turn off reply emails in Settings</a>.</p>
+        </div>`,
+      text: `${params.requesterName} asked for your answer on Recess Forum:\n\n${post.title}\n${snippet}\n\nRead and reply: ${postUrl}\n\nTurn these off in Settings: ${SITE}/settings`,
+    });
+  } catch (err) {
+    console.error("notifyExpertRequest failed", err);
+  }
+}
+
+/**
+ * Daily email for Verified Experts who opted in: questions from the past 3 days
+ * in their topics with no expert reply yet, plus direct requests they haven't
+ * answered. Experts with nothing waiting get no email. At most one per day.
+ */
+export async function sendExpertDailySummaries(): Promise<{ sent: number; skipped: number }> {
+  const admin = createAdminClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const since = new Date(Date.now() - 3 * 864e5).toISOString();
+
+  const { data: subs } = await admin.from("notification_prefs").select("user_id, categories, unsubscribe_token, expert_daily_last_sent")
+    .eq("expert_daily", true).or(`expert_daily_last_sent.is.null,expert_daily_last_sent.lt.${today}`).limit(1000);
+  if (!subs?.length) return { sent: 0, skipped: 0 };
+  const { data: experts } = await admin.from("profiles").select("id").eq("role", "verified_expert").in("id", subs.map((s) => s.user_id));
+  const expertIds = new Set((experts ?? []).map((e) => e.id));
+
+  const { data: posts } = await admin.from("posts")
+    .select("id, title, topic_id, author_id, created_at, comments(author_id, profiles!comments_author_id_fkey(role))")
+    .is("circle_id", null).gte("created_at", since).order("created_at", { ascending: false }).limit(500);
+  type C = { author_id: string; profiles: { role: string } | { role: string }[] | null };
+  const roleOf = (c: C) => (Array.isArray(c.profiles) ? c.profiles[0]?.role : c.profiles?.role);
+  const open = (posts ?? []).map((p) => {
+    const comments = (p.comments as C[] | null) ?? [];
+    return { id: p.id, title: p.title, author: p.author_id, category: categoryOf(p.topic_id), replies: comments.length,
+      expertAnswered: comments.some((c) => roleOf(c) === "verified_expert"), commenters: new Set(comments.map((c) => c.author_id)) };
+  }).filter((p) => !p.expertAnswered);
+
+  const { data: requests } = await admin.from("expert_requests").select("post_id, expert_id, posts(id, title, comments(author_id))")
+    .in("expert_id", [...expertIds]).gte("created_at", new Date(Date.now() - 14 * 864e5).toISOString());
+
+  const row = (p: { id: string; title: string }, note: string) =>
+    `<li style="margin:0 0 10px"><a href="${SITE}/post/${p.id}" style="color:#26364A;font-weight:600;text-decoration:none">${escapeHtml(p.title)}</a><br><span style="font-size:12px;color:#9A968A">${escapeHtml(note)}</span></li>`;
+  const section = (title: string, items: string) => items ? `<h2 style="font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#217A78;margin:24px 0 10px">${title}</h2><ul style="padding-left:18px;margin:0">${items}</ul>` : "";
+
+  let sent = 0, skipped = 0;
+  for (const sub of subs) {
+    if (!expertIds.has(sub.user_id)) { skipped++; continue; }
+    type R = { post_id: string; expert_id: string; posts: { id: string; title: string; comments: { author_id: string }[] | null } | null };
+    const asked = ((requests ?? []) as unknown as R[])
+      .filter((r) => r.expert_id === sub.user_id && r.posts && !(r.posts.comments ?? []).some((c) => c.author_id === sub.user_id))
+      .map((r) => r.posts!);
+    const askedIds = new Set(asked.map((p) => p.id));
+    const waiting = open.filter((p) => p.category && sub.categories.includes(p.category.id) && p.author !== sub.user_id
+      && !p.commenters.has(sub.user_id) && !askedIds.has(p.id)).slice(0, 8);
+    if (!asked.length && !waiting.length) { skipped++; continue; }
+
+    const { data: userData } = await admin.auth.admin.getUserById(sub.user_id);
+    const email = userData?.user?.email;
+    if (!email) { skipped++; continue; }
+
+    const unsub = `${SITE}/unsubscribe?t=${sub.unsubscribe_token}&k=expert`;
+    const count = asked.length + waiting.length;
+    const html = `
+      <div style="font-family:-apple-system,system-ui,sans-serif;max-width:560px;color:#1C1B19">
+        <h1 style="font-size:20px;margin:0 0 4px">${count} ${count === 1 ? "question is" : "questions are"} waiting for an expert</h1>
+        <p style="font-size:14px;color:#5B584F;margin:0">Parents in your topics would love a Verified Expert's answer.</p>
+        ${section("Asked you directly", asked.map((p) => row(p, "A parent picked you")).join(""))}
+        ${section("Waiting in your topics", waiting.map((p) => row(p, `${p.category!.label} · ${p.replies ? `${p.replies} ${p.replies === 1 ? "reply" : "replies"}, no expert yet` : "No replies yet"}`)).join(""))}
+        <hr style="border:none;border-top:1px solid #E6E3DA;margin:28px 0 14px">
+        <p style="font-size:12px;color:#9A968A;line-height:1.6">You're getting this because you turned on the daily expert summary.<br>
+          <a href="${unsub}" style="color:#5B584F">Unsubscribe from the daily summary</a> · <a href="${SITE}/settings#expert-alerts" style="color:#5B584F">Change your topics</a>${MAILING_ADDRESS ? `<br>Recess Forum · ${escapeHtml(MAILING_ADDRESS)}` : ""}</p>
+      </div>`;
+    const text = [
+      `${count} questions are waiting for an expert on Recess Forum`,
+      ...(asked.length ? ["", "Asked you directly:", ...asked.map((p) => `- ${p.title} (${SITE}/post/${p.id})`)] : []),
+      ...(waiting.length ? ["", "Waiting in your topics:", ...waiting.map((p) => `- ${p.title} (${SITE}/post/${p.id})`)] : []),
+      "", `Unsubscribe from the daily summary: ${unsub}`,
+    ].join("\n");
+
+    await sendEmail({
+      to: email, subject: `${count} ${count === 1 ? "question" : "questions"} waiting for an expert on Recess Forum`, html, text,
+      headers: {
+        "List-Unsubscribe": `<${SITE}/api/unsubscribe?t=${sub.unsubscribe_token}&k=expert>, <mailto:recessforum@gmail.com?subject=unsubscribe>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+    });
+    await admin.from("notification_prefs").update({ expert_daily_last_sent: today }).eq("user_id", sub.user_id);
     sent++;
   }
   return { sent, skipped };

@@ -16,8 +16,9 @@ export default function UnsubscribePage() {
 function Unsubscribe() {
   const params = useSearchParams();
   const token = params.get("t") ?? "";
-  const digest = params.get("k") === "digest";
-  const what = digest ? "the weekly digest" : "topic alerts";
+  const kind = params.get("k") === "digest" ? "digest" : params.get("k") === "expert" ? "expert" : undefined;
+  const digest = kind === "digest";
+  const what = digest ? "the weekly digest" : kind === "expert" ? "the daily expert summary" : "topic alerts";
   const [state, setState] = useState<"idle" | "working" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +28,7 @@ function Unsubscribe() {
     const res = await fetch("/api/unsubscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ t: token, k: digest ? "digest" : undefined }),
+      body: JSON.stringify({ t: token, k: kind }),
     });
     if (res.ok) { setState("done"); return; }
     setError((await res.json().catch(() => ({}))).error || "Something went wrong. Please try again.");
@@ -51,7 +52,7 @@ function Unsubscribe() {
     <div className="max-w-sm mx-auto px-6 py-20 text-center">
       <h1 className="text-[20px] font-semibold text-[#1C1B19] mb-2">Unsubscribe from {what}?</h1>
       <p className="text-[14px] text-[#5B584F] leading-relaxed mb-6">
-        {digest ? "You'll stop getting the weekly digest email." : "You'll stop getting emails about new posts in the topics you picked."} Your account stays as it is.
+        {digest ? "You'll stop getting the weekly digest email." : kind === "expert" ? "You'll stop getting the daily email of questions waiting for an expert." : "You'll stop getting emails about new posts in the topics you picked."} Your account stays as it is.
       </p>
       {error && <p className="text-[13px] text-[#B23B3B] mb-3">{error}</p>}
       <button onClick={unsubscribe} disabled={!token || state === "working"}

@@ -8,14 +8,21 @@ export const ALERT_CONSENT_TEXT =
 export const DIGEST_CONSENT_TEXT =
   "Send me a weekly digest of the best posts in my topics. I can unsubscribe anytime.";
 
+export const EXPERT_DAILY_CONSENT_TEXT =
+  "Send me one email a day with questions in my topics that are still waiting for a Verified Expert answer. I can unsubscribe anytime.";
+
 /** Most alert emails one member gets per day, however many posts go up. */
 export const DAILY_ALERT_CAP = 5;
+/** Verified Experts answer questions, so they can get more topic alerts a day. */
+export const EXPERT_DAILY_ALERT_CAP = 15;
 
 export interface TopicPrefs {
   categories: string[];
   categoryEmails: boolean;
   /** Weekly digest opt-in (separate from per-post alerts). */
   weeklyDigest?: boolean;
+  /** Verified Experts only: daily summary of questions still waiting for an expert. */
+  expertDaily?: boolean;
 }
 
 const CATEGORY_IDS = new Set(CATEGORIES.map((c) => c.id));

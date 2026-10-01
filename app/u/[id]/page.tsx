@@ -1,5 +1,6 @@
 "use client";
 
+import { AskThisExpertButton } from "@/components/AskExpert";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -161,6 +162,7 @@ export default function ProfilePage() {
             </div>
           )}
           <div className="flex flex-wrap gap-2">
+            <AskThisExpertButton expertId={profile.id} expertName={profile.displayName} viewerId={viewer?.id ?? null} />
             {profile.website && (
               <a href={profile.website} target="_blank" rel="noopener noreferrer nofollow"
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-semibold bg-[#26364A] text-white hover:bg-[#1e2c3d]">

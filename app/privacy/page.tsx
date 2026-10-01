@@ -92,6 +92,16 @@ export default function PrivacyPage() {
           has its own one-click unsubscribe link.
         </p>
         <p>
+          <strong>Verified Expert emails.</strong> When an expert application
+          is approved, we send one welcome email. Experts can opt in to a daily
+          email of questions in their topics still waiting for an expert answer
+          (with its own one-click unsubscribe link). When a member uses
+          &quot;Ask a Verified Expert&quot; on their own post, we email that
+          expert a link to the post; experts can turn these off with the reply
+          email setting. The request (which post and which expert) may be shown on
+          the post.
+        </p>
+        <p>
           <strong>Reply emails.</strong> We email you when someone replies to
           your post or comment. You can turn these off in Settings.
         </p>

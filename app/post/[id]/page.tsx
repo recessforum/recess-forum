@@ -13,6 +13,7 @@ import { CircleBadge } from "@/components/CircleBadge";
 import { NeedsAnswersBadge } from "@/components/NeedsAnswersBadge";
 import { ExpertAnsweredBadge, hasExpertAnswer } from "@/components/ExpertAnsweredBadge";
 import { EventBanner } from "@/components/EventBanner";
+import { AskExpertButton } from "@/components/AskExpert";
 import type { OfficeHoursEvent } from "@/lib/events";
 import { TopicSelect } from "@/components/TopicSelect";
 import { LoginRequiredModal } from "@/components/LoginRequiredModal";
@@ -318,6 +319,7 @@ export default function PostDetailPage() {
       ) : (
         post.body && <p className="text-[15px] text-[#3A382F] leading-relaxed mb-4 whitespace-pre-wrap">{post.body}</p>
       )}
+      {!editing && profile?.id === post.authorId && !hasExpertAnswer(comments) && <AskExpertButton postId={post.id} />}
       {post.imageUrl && (
         // eslint-disable-next-line @next/next/no-img-element -- user-uploaded post photo, arbitrary Supabase Storage object
         <img src={post.imageUrl} alt="" className="w-full max-h-[600px] object-contain bg-[#EFEDE6] mb-4" />

@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
 
   const { error } = await createAdminClient()
     .from("notification_prefs")
-    // Each email's link turns off only that kind of email: "digest" or (default) topic alerts.
-    .update({ ...(kind === "digest" ? { weekly_digest: false } : { category_emails: false }), updated_at: new Date().toISOString() })
+    // Each email's link turns off only that kind of email: "digest", "expert" (daily summary) or (default) topic alerts.
+    .update({ ...(kind === "digest" ? { weekly_digest: false } : kind === "expert" ? { expert_daily: false } : { category_emails: false }), updated_at: new Date().toISOString() })
     .eq("unsubscribe_token", token);
   if (error) return NextResponse.json({ error: "Couldn't unsubscribe. Please try again." }, { status: 500 });
   return NextResponse.json({ ok: true });
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
 // A plain visit (or a link scanner) only lands on the confirmation page.
 export async function GET(req: NextRequest) {
   const t = req.nextUrl.searchParams.get("t") ?? "";
-  const k = req.nextUrl.searchParams.get("k") === "digest" ? "&k=digest" : "";
+  const kind = req.nextUrl.searchParams.get("k");
+  const k = kind === "digest" || kind === "expert" ? `&k=${kind}` : "";
   return NextResponse.redirect(new URL(`/unsubscribe?t=${encodeURIComponent(t)}${k}`, req.url));
 }

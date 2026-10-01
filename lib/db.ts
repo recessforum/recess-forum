@@ -325,7 +325,7 @@ export async function reviewExpertApplication(
   applicationId: string,
   decision: "approved" | "rejected",
   reviewerId: string
-): Promise<void> {
+): Promise<string> {
   const { data: application, error: fetchError } = await supabase
     .from("expert_applications")
     .select("applicant_id, expert_type")
@@ -346,6 +346,7 @@ export async function reviewExpertApplication(
       .eq("id", application.applicant_id);
     if (updateProfileError) throw updateProfileError;
   }
+  return application.applicant_id;
 }
 
 /**
