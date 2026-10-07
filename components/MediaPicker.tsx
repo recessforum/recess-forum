@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ImagePlus, Upload, X } from "lucide-react";
+import { ImagePlus, Play, Upload, X } from "lucide-react";
 import { checkMedia, MEDIA_ACCEPT } from "@/lib/media";
 
 /** Pick one photo or video, with a preview. `compact` is a small inline
@@ -67,14 +67,38 @@ export function MediaPicker({
   );
 }
 
+/** A video that downloads nothing until someone taps play. Rendering a real
+ *  <video> (even with preload="metadata") made every page view, including
+ *  bots and link crawlers, pull most of each file from Storage: about 1 GB a
+ *  day of egress for six videos. The URL is not in the HTML until tapped. */
+export function ClickToPlayVideo({ src, className = "" }: { src: string; className?: string }) {
+  const [playing, setPlaying] = useState(false);
+  if (playing) {
+    return <video src={src} controls autoPlay playsInline preload="auto" onClick={(e) => e.stopPropagation()} className={`w-full bg-black ${className}`} />;
+  }
+  return (
+    <button
+      type="button"
+      aria-label="Play video"
+      onClick={(e) => { e.stopPropagation(); setPlaying(true); }}
+      className={`w-full aspect-video flex items-center justify-center gap-2 bg-[#1E2733] text-white text-[13px] ${className}`}
+    >
+      <span className="flex items-center justify-center w-12 h-12 rounded-full bg-white/90 text-[#1E2733]">
+        <Play size={22} fill="currentColor" />
+      </span>
+      Play video
+    </button>
+  );
+}
+
 /** Shows an uploaded photo or video (posts, replies, circles). */
 export function MediaView({ imageUrl, videoUrl, className = "" }: { imageUrl: string | null; videoUrl: string | null; className?: string }) {
   if (videoUrl) {
-    return <video src={`${videoUrl}#t=0.1`} controls playsInline preload="metadata" onClick={(e) => e.stopPropagation()} className={`w-full max-h-96 bg-black ${className}`} />;
+    return <ClickToPlayVideo src={videoUrl} className={`max-h-96 ${className}`} />;
   }
   if (imageUrl) {
     // eslint-disable-next-line @next/next/no-img-element -- user-uploaded media, arbitrary Supabase Storage objects
-    return <img src={imageUrl} alt="" className={`w-full max-h-96 object-contain bg-[#EFEDE6] ${className}`} />;
+    return <img src={imageUrl} alt="" loading="lazy" className={`w-full max-h-96 object-contain bg-[#EFEDE6] ${className}`} />;
   }
   return null;
 }

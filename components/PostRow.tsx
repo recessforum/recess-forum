@@ -16,6 +16,7 @@ import { ExpertAnsweredBadge } from "./ExpertAnsweredBadge";
 import { AuthorBadges } from "./Badges";
 import { Avatar } from "./Avatar";
 import { Briefcase } from "lucide-react";
+import { ClickToPlayVideo } from "./MediaPicker";
 
 type TierWithIcon = (Tier & { icon: "crown" | "star" | "sprout" | "rocket"; text: string; bg: string }) | null;
 
@@ -71,11 +72,10 @@ export function PostRow({
         {post.body && <p className="text-[14px] text-[#5B584F] leading-relaxed line-clamp-2 mb-1.5">{post.body}</p>}
         {post.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- user-uploaded post photos, arbitrary Supabase Storage objects
-          <img src={post.imageUrl} alt="" className="w-full max-h-96 object-contain bg-[#EFEDE6] mb-1.5" />
+          <img src={post.imageUrl} alt="" loading="lazy" className="w-full max-h-96 object-contain bg-[#EFEDE6] mb-1.5" />
         )}
         {post.videoUrl && (
-          <video src={`${post.videoUrl}#t=0.1`} controls playsInline preload="metadata"
-            onClick={(e) => e.stopPropagation()} className="w-full max-h-96 bg-black mb-1.5" />
+          <ClickToPlayVideo src={post.videoUrl} className="max-h-96 mb-1.5" />
         )}
         {post.promo && (
           <div className="flex items-center gap-1 text-[11px] text-[#217A78] mb-1.5">

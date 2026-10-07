@@ -26,6 +26,7 @@ import { ReplyComposer, type ReplyInput } from "@/components/ReplyComposer";
 import { placeLabel } from "@/lib/location";
 import { useAuth } from "@/lib/auth-context";
 import { sharePost as sharePostLink } from "@/lib/share";
+import { ClickToPlayVideo } from "@/components/MediaPicker";
 
 export default function PostDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -325,7 +326,7 @@ export default function PostDetailPage() {
         <img src={post.imageUrl} alt="" className="w-full max-h-[600px] object-contain bg-[#EFEDE6] mb-4" />
       )}
       {post.videoUrl && (
-        <video src={`${post.videoUrl}#t=0.1`} controls playsInline preload="metadata" className="w-full max-h-[600px] bg-black mb-4" />
+        <ClickToPlayVideo src={post.videoUrl} className="max-h-[600px] mb-4" />
       )}
       {post.promo && (
         <div className="flex items-center gap-2 text-[13px] text-[#217A78] bg-[#E4F2F1] px-3 py-2 mb-4">
